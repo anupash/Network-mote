@@ -4,7 +4,7 @@
 #include <string.h>
 #include <assert.h>
 #include "structs.h"
-#include "zlib.h"
+#include <zlib.h>
 
 #include "util.h"
 #include "compress.h"
