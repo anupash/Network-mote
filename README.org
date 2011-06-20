@@ -20,6 +20,7 @@ TOSNET PROJECT
     + *cd motes-simple && make telosb install.$1 /dev/ttyUSB0,1*
       where $1 is the preferred mote ID (254 for the gateway, 1 for the client)
   - compile the driver with
+    + *sudo apt-get install zlib1g zlib1g-dev zlib-bin*
     + *make force*
   - on /A/ run the gateway with *./gateway /dev/ttyUSB0 wlan0* (for example)
   - on /B/ run the client with *make run*
