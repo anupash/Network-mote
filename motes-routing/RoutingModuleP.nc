@@ -21,7 +21,7 @@ generic module RoutingModuleP() {
     
     // Timer interfaces
     interface Timer<Milli> as TimerBeacon;
-    interface Timer<Milli> as TimerNeighborAlive;
+    interface Timer<Milli> as TimerNeighborsAlive;
   }
   
   provides {

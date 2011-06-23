@@ -18,13 +18,22 @@ implementation {
   // The routing module
   components RoutingModuleP as Routing;
   
-  // The radio component
+  // The radio components
   components ActiveMessageC;
+  Routing.RadioSend -> ActiveMessageC;
+  Routing.RadioReceive -> ActiveMessageC.Receive;
+  Routing.RadioPacket -> ActiveMessageC;
+  Routing.RadioAMPacket -> ActiveMessageC;
+//   Routing.PacketAcknowledgements -> ActiveMessageC;
   
   // The timer components
   components new TimerMilliC as TimerMilliBeacon;
   components new TimerMilliC as TimerMilliNeighborsAlive;
+  Routing.TimerBeacon -> TimerMilliBeacon;
+  Routing.TimerNeighborsAlive -> TimerMilliNeighborsAlive;
   
+  // Standard components
   components LedsC;
+  Routing.Leds -> LedsC;
 }
 
