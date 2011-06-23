@@ -52,14 +52,82 @@ implementation {
   /*************/
   
   /**
-   * Initialize variables of the routing modules
+   * Initialize variables of the routing module
+   * 
    */
-  	void initRouting() {
-    	// start the timer for the beacon
-    	TimerBeacon.startPeriodic(2000);
-  	}
+  void initRouting() {
+    
+    // start the timers for the beacon and for the routing updates
+    TimerBeacon.startPeriodic(2000);
+    TimerRoutingUpdate.startPeriodic(10000);
+    
+    // initialize routing table variable
+    routingTable = NULL;
+    noOfRoutes = 0;
+  }
   
- 
+
+  /*********/
+  /* Tasks */
+  /*********/
+  
+  /**
+   * Task for broadcasting the beacon
+   */
+  task void broadcastBeacon() {
+    
+  }
+
+  /**
+   * Task for sending the routing updates to the neighbors
+   */
+  task void sendRoutingUpdate() {
+    
+  }
+  
+  /**********/
+  /* Events */
+  /**********/
+  
+  /**
+   * Called when the timer for the beacon expires.
+   * When this timer is fired, the mote broadcasts a beacon
+   * 
+   * @see tos.interfaces.Timer.fired
+   */
+  event void TimerBeacon.fired() {
+    post broadcastBeacon();
+  }
+  
+  /**
+   * Called when the timer for the routing updates expires.
+   * When this timer is fired, the mote sends a distance vector version of its
+   * routing table to its neighbors (node id and metric)
+   * 
+   * @see tos.interfaces.Timer.fired
+   */
+  event void TimerRoutingUpdate.fired() {
+    post sendRoutingUpdate();
+  }
+  
+  /**
+   * Called when the radio interface is done sending a message.
+   * 
+   * @see tos.interfaces.AMSend.sendDone
+   */
+  event void RadioSend.sendDone[am_id_t id](message_t* msg, error_t error)) {
+    
+  }
+
+  /**
+  * Called when a message is received through the radio interface.
+  * 
+  * @see tos.interfaces.Receive.receive
+  */
+  event message_t* RadioReceive.receive[am_id_t id](message_t* msg, void* payload, uint8_t len) {
+    
+  }
+  
 	task void sendBeacon(){
 		if(!busy){
 			beacons_t* beaconpkt = (beacons_t*)(call Packet.getPayload(&pkt, sizeof (beacons_t)));
