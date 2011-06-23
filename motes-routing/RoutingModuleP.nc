@@ -49,17 +49,46 @@ implementation {
   /*************/
   
   /**
-   * Initialize variables of the routing modules
+   * Initialize variables of the routing module
+   * 
    */
   void initRouting() {
     
-    // start the timer for the beacon
+    // start the timers for the beacon and for the routing updates
     TimerBeacon.startPeriodic(2000);
+    TimerRoutingUpdate.startPeriodic(10000);
+    
+    // initialize routing table variable
+    routingTable = NULL;
+    noOfRoutes = 0;
   }
   
   
   
+  /**********/
+  /* Events */
+  /**********/
   
+  /**
+   * Called when the timer for the beacon expires.
+   * When this timer is fired, the mote broadcasts a beacon
+   * 
+   * @see tos.interfaces.Timer.fired
+   */
+  event void TimerBeacon.fired() {
+    
+  }
+  
+  /**
+   * Called when the timer for the routing updates expires.
+   * When this timer is fired, the mote sends a distance vector version of its
+   * routing table to its neighbors (node id and metric)
+   * 
+   * @see tos.interfaces.Timer.fired
+   */
+  event void TimerRoutingUpdate.fired() {
+    
+  }
   
   
   
