@@ -15,6 +15,16 @@ generic configuration RoutingModuleC() @safe() {
 }
 
 implementation {
+  // The routing module
+  components RoutingModuleP as Routing;
   
+  // The radio component
+  components ActiveMessageC;
+  
+  // The timer components
+  components new TimerMilliC as TimerMilliBeacon;
+  components new TimerMilliC as TimerMilliNeighborsAlive;
+  
+  components LedsC;
 }
 

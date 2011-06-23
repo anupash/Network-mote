@@ -8,7 +8,20 @@
 
 generic module RoutingModuleP() {
   uses {
+    // standard interfaces 
+    interface Leds;
     
+    // Radio interfaces
+    interface AMSend as RadioSend;
+    interface Receive as RadioReceive;
+    
+    // Packet interfaces
+    interface Packet;
+    interface AMPacket;
+    
+    // Timer interfaces
+    interface Timer<Milli> as TimerBeacon;
+    interface Timer<Milli> as TimerNeighborAlive;
   }
   
   provides {
@@ -17,5 +30,5 @@ generic module RoutingModuleP() {
 }
 
 implementation {
-  
+    
 }

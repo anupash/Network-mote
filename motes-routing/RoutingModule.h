@@ -27,7 +27,7 @@ typedef uint8_t boolean;
 
 typedef nx_struct routing_record{
 	nx_uint8_t node_id;
-	nx_uint16_t metric;		
+	nx_uint8_t metric;		
 }routing_record_t;
 
 typedef nx_struct routing_table {
