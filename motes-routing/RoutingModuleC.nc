@@ -28,8 +28,10 @@ implementation {
   
   // The timer components
   components new TimerMilliC as TimerMilliBeacon;
+  components new TimerMilliC as TimerMilliRoutingUpdate;
   components new TimerMilliC as TimerMilliNeighborsAlive;
   Routing.TimerBeacon -> TimerMilliBeacon;
+  Routing.TimerRoutingUpdate -> TimerMilliRoutingUpdate; 
   Routing.TimerNeighborsAlive -> TimerMilliNeighborsAlive;
   
   // Standard components

@@ -21,6 +21,7 @@ generic module RoutingModuleP() {
     
     // Timer interfaces
     interface Timer<Milli> as TimerBeacon;
+    interface Timer<Milli> as TimerRoutingUpdate;
     interface Timer<Milli> as TimerNeighborsAlive;
   }
   
@@ -31,4 +32,37 @@ generic module RoutingModuleP() {
 
 implementation {
     
+  /*************/
+  /* Variables */
+  /*************/
+  
+  // the routing table as a linked list of records
+  routing_table_t* routingTable;
+  
+  // the number of records of the routing table
+  uint8_t noOfRoutes;
+
+
+
+  /*************/
+  /* Functions */
+  /*************/
+  
+  /**
+   * Initialize variables of the routing modules
+   */
+  void initRouting() {
+    
+    // start the timer for the beacon
+    TimerBeacon.startPeriodic(2000);
+  }
+  
+  
+  
+  
+  
+  
+  
+  
+  
 }
