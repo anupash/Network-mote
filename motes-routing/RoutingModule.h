@@ -22,12 +22,11 @@ enum{
 };
 
 /* 
- * Types of messages
+ * Types of messages for the routing module
  */
 typedef enum {
   AM_BEACON 0x10,
-  AM_ROUTING_UPDATE 0x11,
-  AM_DATA 0x12
+  AM_ROUTING_UPDATE 0x11
 }
 
 
