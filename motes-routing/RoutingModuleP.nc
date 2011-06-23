@@ -63,7 +63,24 @@ implementation {
     noOfRoutes = 0;
   }
   
+
+  /*********/
+  /* Tasks */
+  /*********/
   
+  /**
+   * Task for broadcasting the beacon
+   */
+  task void broadcastBeacon() {
+    
+  }
+
+  /**
+   * Task for sending the routing updates to the neighbors
+   */
+  task void sendRoutingUpdate() {
+    
+  }
   
   /**********/
   /* Events */
@@ -76,7 +93,7 @@ implementation {
    * @see tos.interfaces.Timer.fired
    */
   event void TimerBeacon.fired() {
-    
+    post broadcastBeacon();
   }
   
   /**
@@ -87,11 +104,26 @@ implementation {
    * @see tos.interfaces.Timer.fired
    */
   event void TimerRoutingUpdate.fired() {
-    
+    post sendRoutingUpdate();
   }
   
-  
-  
+  /**
+   * Called when the radio interface is done sending a message.
+   * 
+   * @see tos.interfaces.AMSend.sendDone
+   */
+  event void RadioSend.sendDone[am_id_t id](message_t* msg, error_t error)) {
+    
+  }
+
+  /**
+  * Called when a message is received through the radio interface.
+  * 
+  * @see tos.interfaces.Receive.receive
+  */
+  event message_t* RadioReceive.receive[am_id_t id](message_t* msg, void* payload, uint8_t len) {
+    
+  }
   
   
 }
