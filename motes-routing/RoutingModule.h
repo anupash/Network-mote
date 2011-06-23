@@ -38,11 +38,16 @@ typedef nx_struct routing_table {
     nx_uint8_t timeout;
 } routing_table_t;
 
-typedef nx_struct beacons {
+typedef nx_struct routing_update {
 	nx_uint8_t node_id;
 	nx_uint8_t num_of_records;
 	routing_record_t records[MAX_NUM_RECORDS];
+} routing_update_t; 
+
+typedef nx_struct beacons {
+	nx_uint8_t node_id;
 } beacons_t; 
+
 
 typedef nx_struct ack {
 
