@@ -1,0 +1,8 @@
+Week 1 and 2:
+- Get familiarized with provided code
+- Make code run on motes
+
+Week 3:
+- Aded routing support.
+All nodes keep a routing table, that they check when they want to forward a packet to a node, which can be a client or the gateway. This table contains an entry for each node in the netwrok, where the next hop (next mote) to reach that node is stored.
+This allows a sensor network to be built, and clients that cannot reach the gateway directly can still do it through intermediary nodes.
