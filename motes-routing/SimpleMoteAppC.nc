@@ -51,4 +51,8 @@ implementation{
     // Packet interfaces
     SimpleMoteAppP.Packet -> Radio;
     SimpleMoteAppP.AMPacket -> Radio;
+    
+    // Routing module
+    components new RoutingModuleC;
+    SimpleMoteAppP.Routing -> RoutingModuleC.Routing;
 }

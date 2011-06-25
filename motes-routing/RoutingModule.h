@@ -15,10 +15,10 @@
 /*
  * General definitions.
  */
-enum{
-	BEACON_TIMER_MILLI=5120,
-	EXPIRE_TIMER_MILLI=15360,
-	MAX_NUM_RECORDS=10
+enum {
+  BEACON_TIMER_MILLI = 5120,
+  MAX_NUM_RECORDS = 10,
+  MAX_TIMEOUT = 15
 };
 
 /* 
@@ -34,32 +34,32 @@ typedef nx_uint8_t nx_boolean;
 typedef uint8_t boolean;
 
 
-typedef nx_struct routing_record{
-	nx_uint8_t node_id;
-	nx_uint8_t metric;		
-}routing_record_t;
+typedef nx_struct routing_record {
+    nx_uint8_t node_id;
+    nx_uint8_t metric;		
+} routing_record_t;
 
 typedef nx_struct routing_table {
     nx_uint8_t node_id;
     nx_am_addr_t node_addr;
-    nx_uint8_t hopcount;
+    nx_uint8_t metric;
     nx_am_addr_t nexthop;
     nx_uint8_t timeout;
 } routing_table_t;
 
 typedef nx_struct routing_update {
-	nx_uint8_t node_id;
-	nx_uint8_t num_of_records;
-	routing_record_t records[MAX_NUM_RECORDS];
+    nx_uint8_t node_id;
+    nx_uint8_t num_of_records;
+    routing_record_t records[MAX_NUM_RECORDS];
 } routing_update_t; 
 
 typedef nx_struct beacons {
-	nx_uint8_t node_id;
+    nx_uint8_t node_id;
 } beacons_t; 
 
 
 typedef nx_struct ack {
 
-}ack_t;
+} ack_t;
 
 #endif

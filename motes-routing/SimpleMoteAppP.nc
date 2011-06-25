@@ -29,6 +29,9 @@ module SimpleMoteAppP{
         // Packet interfaces
         interface Packet;
         interface AMPacket;
+	
+	// Routing interface
+	interface Routing;
     }
 }
 implementation{

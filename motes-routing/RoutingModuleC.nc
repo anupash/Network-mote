@@ -10,8 +10,6 @@
 
 generic configuration RoutingModuleC() @safe() {
   provides interface Routing;
-  
-  uses {}
 }
 
 implementation {
