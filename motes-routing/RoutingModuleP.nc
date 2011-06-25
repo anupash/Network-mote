@@ -42,7 +42,7 @@ implementation {
   // the number of records of the routing table
   uint8_t noOfRoutes;
 
-
+  message_t msg;
 
   /*************/
   /* Functions */
