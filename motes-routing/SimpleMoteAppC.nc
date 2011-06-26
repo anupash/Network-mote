@@ -53,6 +53,6 @@ implementation{
     SimpleMoteAppP.AMPacket -> Radio;
     
     // Routing module
-    components new RoutingModuleC;
-    SimpleMoteAppP.Routing -> RoutingModuleC.Routing;
+    components new RoutingModuleC() as RouteModule;
+    SimpleMoteAppP.Routing -> RouteModule.Routing;
 }

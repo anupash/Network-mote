@@ -21,17 +21,24 @@ enum {
   MAX_TIMEOUT = 15
 };
 
+/*
+ * 
+ */
+enum {
+  AM_ROUTING = 6
+};
+
 /* 
  * Types of messages for the routing module
  */
-typedef enum {
-  AM_BEACON 0x10,
-  AM_ROUTING_UPDATE 0x11
-}
+enum {
+  AM_BEACON = 0x10,
+  AM_ROUTING_UPDATE = 0x11
+};
 
 
-typedef nx_uint8_t nx_boolean;
-typedef uint8_t boolean;
+//typedef nx_uint8_t nx_boolean;
+//typedef uint8_t boolean;
 
 
 typedef nx_struct routing_record {

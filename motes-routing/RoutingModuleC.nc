@@ -14,26 +14,34 @@ generic configuration RoutingModuleC() @safe() {
 
 implementation {
   // The routing module
-  components RoutingModuleP as Routing;
+  components new RoutingModuleP() as RoutingModuleP;
   
   // The radio components
   components ActiveMessageC;
-  Routing.RadioSend -> ActiveMessageC;
-  Routing.RadioReceive -> ActiveMessageC.Receive;
-  Routing.RadioPacket -> ActiveMessageC;
-  Routing.RadioAMPacket -> ActiveMessageC;
-//   Routing.PacketAcknowledgements -> ActiveMessageC;
+  components new AMSenderC(AM_ROUTING);
+  components new AMReceiverC(AM_ROUTING);
+  
+  RoutingModuleP.RadioControl -> ActiveMessageC;
+  
+  RoutingModuleP.RadioSend -> AMSenderC;
+  RoutingModuleP.Packet -> AMSenderC;
+  RoutingModuleP.AMPacket -> AMSenderC;
+
+  RoutingModuleP.RadioReceive -> ActiveMessageC.Receive;
+  
+
+//   RoutingModuleP.PacketAcknowledgements -> ActiveMessageC;
   
   // The timer components
-  components new TimerMilliC as TimerMilliBeacon;
-  components new TimerMilliC as TimerMilliRoutingUpdate;
-  components new TimerMilliC as TimerMilliNeighborsAlive;
-  Routing.TimerBeacon -> TimerMilliBeacon;
-  Routing.TimerRoutingUpdate -> TimerMilliRoutingUpdate; 
-  Routing.TimerNeighborsAlive -> TimerMilliNeighborsAlive;
+  components new TimerMilliC() as TimerMilliBeacon;
+  components new TimerMilliC() as TimerMilliRoutingUpdate;
+  components new TimerMilliC() as TimerMilliNeighborsAlive;
+  RoutingModuleP.TimerBeacon -> TimerMilliBeacon;
+  RoutingModuleP.TimerRoutingUpdate -> TimerMilliRoutingUpdate; 
+  RoutingModuleP.TimerNeighborsAlive -> TimerMilliNeighborsAlive;
   
   // Standard components
   components LedsC;
-  Routing.Leds -> LedsC;
+  RoutingModuleP.Leds -> LedsC;
 }
 
