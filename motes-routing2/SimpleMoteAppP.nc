@@ -226,7 +226,7 @@ implementation{
     */
     void forwardPacket(message_t* msg, uint8_t len) {
       uint8_t i;
-      am_addr_t nextHopAddress;
+      am_addr_t nextHopAddress = AM_BROADCAST_ADDR;
       am_addr_t destination;
       bool found = FALSE;
       
@@ -242,12 +242,9 @@ implementation{
       }
       // If the the address was not found, use by default the broadcast.
       if (!found)
-	nextHopAddress = AM_BROADCAST_ADDR;
+	//nextHopAddress = AM_BROADCAST_ADDR;
+	///TODO drop packet??
       
-      if (nextHopAddress == AM_BROADCAST_ADDR) {			// The address is not found!!!!
-	  ///TODO: what to do when the address is not found?
-      }
-
       sR_dest = nextHopAddress; sR_m = *msg; sR_len = len;
       post sendRadio();
     }
@@ -295,7 +292,6 @@ implementation{
     void processRoutingUpdate(routing_update_t* routingUpdateMsg, am_addr_t sourceAddr) {
 
       uint8_t i, j;
-      bool isAlreadyInTable = FALSE;
       
       // For each entry in the routing update received, check if this entry exists in the routing table and update it or create it
       uint8_t senderNodeId = routingUpdateMsg->node_id;
@@ -349,9 +345,6 @@ implementation{
     void failBlink(){
         call Leds.led2Toggle();
     }
-
-
-   
 
     /**********/
     /* Events */
@@ -459,7 +452,6 @@ implementation{
       routing_update_t* receivedRoutingUpdate;
       myPacketHeader *myph;
       am_addr_t source;
-      am_addr_t myAddress;
       uint16_t msgType;
       
       // discard if not a valid message
@@ -484,35 +476,24 @@ implementation{
 	
 	case AM_IP:
 	  myph = (myPacketHeader*) payload;
-	  myAddress = call AMPacket.address();
-	  // First we check if we are the intended mote
-	  
-	  if (myph->destination != myAddress) {	// If itś not for this node, forward packet to the nexthop in order to reach destination
-	    forwardPacket(m, len);
-	  }
-	  else { 				// Package for this mote, process it
-	  
-	    /**CODE ALREADY PROVIDED**/
-	    
-	    source = myph->sender;
+	  source = myph->sender;
 
-	    // Test, whether this message is a duplicate
-	    if(!inQueue(source, myph->seq_no, myph->ord_no)){
-		// Add this message to the queue of seen messages
-		addToQueue(source, myph->seq_no, myph->ord_no); 
-			
-		// Test if the message is for us
-		if(myph->destination == TOS_NODE_ID){
-		    // Forward it to the serial
-		    sS_dest = AM_BROADCAST_ADDR; sS_m = *m; sS_len = len;
-		    post sendSerial();
-		}else{
-		    // Forward it!
-		    sR_dest = AM_BROADCAST_ADDR; sR_m = *m; sR_len = len;
-		    post sendRadio();
-		}
+	  // Test, whether this message is a duplicate
+	  if(!inQueue(source, myph->seq_no, myph->ord_no)){
+	    // Add this message to the queue of seen messages
+	    addToQueue(source, myph->seq_no, myph->ord_no); 
+		    
+	    // Test if the message is for us
+	    if(myph->destination == TOS_NODE_ID){
+		// Forward it to the serial
+		sS_dest = AM_BROADCAST_ADDR; sS_m = *m; sS_len = len;
+		post sendSerial();
 	    }
-	  }
+	    else{
+		// Forward it to the appropriate destination
+		forwardPacket(m, len);
+	      }
+	    }
 	  break;
 	
 	default: ;
