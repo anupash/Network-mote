@@ -26,11 +26,7 @@ generic module RoutingModuleP() {
     interface Timer<TMilli> as TimerBeacon;
     interface Timer<TMilli> as TimerRoutingUpdate;
     interface Timer<TMilli> as TimerNeighborsAlive;
-    
-    // Split control
-    interface SplitControl as RadioControl;
   }
-  
 }
 
 implementation {
@@ -163,29 +159,31 @@ implementation {
    * @param beaconAddr the address if the node sending the beacon
    * 
    */
-  void processRoutingUpdate(routing_update_t* routingUpdateMsg, am_addr_t beaconAddr) {
-    ///TODO get each record and update the routing table
-    uint8_t i;
-    uint8_t j;
+  void processRoutingUpdate(routing_update_t* routingUpdateMsg, am_addr_t sourceAddr) {
+    
+    uint8_t i, j;
     bool isAlreadyInTable = FALSE;
     
-    // Foreach entry in the routing update received, check if this entry exists in the routing table and update it or create it
-    uint8_t sender_node_id = routingUpdateMsg->node_id;
+    // For each entry in the routing update received, check if this entry exists in the routing table and update it or create it
+    uint8_t senderNodeId = routingUpdateMsg->node_id;
     uint8_t noOfRoutesUpdate = routingUpdateMsg->num_of_records;
     routing_record_t* updateRecords = routingUpdateMsg->records;
     
     for (i = 0; i < noOfRoutesUpdate; i++) {
-      for (j = 0; j < noOfRoutes; j++) {                       // Given an update, check if we have an entry in our routing table. 
-	if (routingTable[i].node_id == updateRecords[i].node_id) {    // If there is an entry, update the next hop & metric
-	  routingTable[i].nexthop = sender_node_id;
+      for (j = 0; j < noOfRoutes; j++) {                       
+	// If there is an entry, check if the new route is better and update the next hop & metric
+	if (routingTable[i].node_id == updateRecords[i].node_id && routingTable[i].metric > updateRecords[i].metric + 1) { 
+	  routingTable[i].nexthop = senderNodeId;
 	  routingTable[i].metric = updateRecords[i].metric + 1;
 	}
 	else {                                                         // If there is not an entry, create one.
-	  noOfRoutes++;
+	  if (noOfRoutes < MAX_NUM_RECORDS)
+	    noOfRoutes++;
+	  else return;
 	  routingTable[noOfRoutes - 1].node_id = updateRecords[i].node_id;
-	  routingTable[noOfRoutes - 1].node_addr = beaconAddr;
+	  routingTable[noOfRoutes - 1].node_addr = sourceAddr;
 	  routingTable[noOfRoutes - 1].metric = updateRecords[i].metric + 1;
-	  routingTable[noOfRoutes - 1].nexthop = sender_node_id;
+	  routingTable[noOfRoutes - 1].nexthop = senderNodeId;
 	  routingTable[noOfRoutes - 1].timeout = MAX_TIMEOUT;
         }
       }
@@ -218,14 +216,25 @@ implementation {
   }
   
   /**
-   * Called when the timer for the routing updates expires.
-   * When this timer is fired, the mote sends a distance vector version of its
-   * routing table to its neighbors (node id and metric)
+   * Called when the timer for the routes expires.
+   * When this timer is fired, the timeout value of each 
+   * route is decreased by one and the routes with timeout
+   * 0 are removed from the routing table.
    * 
    * @see tos.interfaces.Timer.fired
    */
   event void TimerNeighborsAlive.fired() {
-    ///TODO: reduce the timeout of each entry in the routing table by one second, and if itś zero remove the entry 
+    uint8_t i, j;
+    
+    for (i = 0; i < noOfRoutes; i++) {
+      routingTable[i].timeout--;
+      // if the timeout becomes 0, remove the route from the routing table
+      if (routingTable[i].timeout == 0) {
+	for (j = i; j < noOfRoutes - 1; j++)
+	  routingTable[j] = routingTable[i + 1];
+	noOfRoutes--;
+      }
+    }
   }
   
   /**
@@ -247,7 +256,7 @@ implementation {
     
     beacons_t* receivedBeacon;
     routing_update_t* receivedRoutingUpdate;
-    am_addr_t receivedBeaconAddr;
+    am_addr_t receivedBeaconAddr, receivedUpdateAddr;
     uint16_t msgType;
     
     // discard if not a valid message
@@ -257,34 +266,21 @@ implementation {
     // get the type of message
     msgType = call AMPacket.type(msg);
     
-    receivedBeaconAddr = call AMPacket.source(msg);
     switch (msgType) {
       
       case AM_BEACON:
+	receivedBeaconAddr = call AMPacket.source(msg);
 	receivedBeacon = (beacons_t*) payload;
 	processBeacon(receivedBeacon, receivedBeaconAddr);
 	break;
       
       case AM_ROUTING_UPDATE:
+	receivedUpdateAddr = call AMPacket.source(msg);
 	receivedRoutingUpdate = (routing_update_t*) payload;
-	processRoutingUpdate(receivedRoutingUpdate, receivedBeaconAddr);
+	processRoutingUpdate(receivedRoutingUpdate, receivedUpdateAddr);
 	break;
       
       default: ;
     }
-  }
-  
-  /**
-   * Called when the radio interface is done starting.
-   */
-  event void RadioControl.startDone(){
-    //Do nothing
-  }
-  
-  /**
-   * Called when the radio interface is done stopping.
-   */
-  event void RadioControl.stopDone(){
-    //Do nothing
   }
 }
