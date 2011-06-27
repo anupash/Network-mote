@@ -53,6 +53,16 @@ implementation{
     // The message that is used for serial acknowledgements.
     message_t ack_msg;
     
+    // Variables used for radio sending task
+    am_addr_t sR_dest;
+    message_t sR_m;
+    uint8_t sR_len;
+    
+    // Variables used for serial sending task
+    am_addr_t sS_dest;
+    message_t sS_m;
+    uint8_t sS_len;
+    
     /*************************/
     /* Variables for routing */
     /*************************/
@@ -68,6 +78,36 @@ implementation{
     // whether radio is busy or available for transmission
     bool radioBusy = FALSE; 
 
+
+    /*********/
+    /* Tasks */
+    /*********/
+
+    /** 
+     * A task for sending radio messages
+     */
+    task void sendRadio(){
+        call RadioSend.send(sR_dest, &sR_m, sR_len);
+    }
+
+    /** 
+     * A task for sending serial messages
+     */
+    task void sendSerial(){
+        call SerialSend.send(sS_dest, &sS_m, sS_len);
+    }
+
+    /**
+     * Sends an acknowledgement for the last packet over the serial.
+     * An acknowledgement is just of an empty Active Message.
+     */
+    task void sendSerialAck(){
+
+        //TODO: Does that work, or does TinyOS give us an error for the 0?
+        call SerialSend.send(AM_BROADCAST_ADDR, &ack_msg, 0);
+    }
+    
+    
     /*************/
     /* Functions */
     /*************/
@@ -311,40 +351,6 @@ implementation{
     }
 
 
-    /*********/
-    /* Tasks */
-    /*********/
-
-    /** 
-     * A task for sending radio messages and the used variables.
-     */
-    am_addr_t sR_dest;
-    message_t sR_m;
-    uint8_t sR_len;
-    task void sendRadio(){
-        call RadioSend.send(sR_dest, &sR_m, sR_len);
-    }
-
-    /** 
-     * A task for sending serial  messages and the used variables.
-     */
-    am_addr_t sS_dest;
-    message_t sS_m;
-    uint8_t sS_len;
-    task void sendSerial(){
-        call SerialSend.send(sS_dest, &sS_m, sS_len);
-    }
-
-    /**
-     * Sends an acknowledgement for the last packet over the serial.
-     * An acknowledgement is just of an empty Active Message.
-     */
-    task void sendSerialAck(){
-
-        //TODO: Does that work, or does TinyOS give us an error for the 0?
-        call SerialSend.send(AM_BROADCAST_ADDR, &ack_msg, 0);
-    }
-    
    
 
     /**********/
