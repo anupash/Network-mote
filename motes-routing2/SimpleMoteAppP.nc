@@ -539,7 +539,7 @@ implementation{
 	// if the timeout becomes 0, remove the route from the routing table
 	if (routingTable[i].timeout == 0) {
 	  for (j = i; j < noOfRoutes - 1; j++)
-	    routingTable[j] = routingTable[i + 1];
+	    routingTable[j] = routingTable[j + 1];
 	  noOfRoutes--;
 	}
       }
