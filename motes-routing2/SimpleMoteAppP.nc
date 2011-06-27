@@ -502,10 +502,6 @@ implementation{
       return m;
     }
     
-    /**********************/
-    /* Events for routing */
-    /**********************/
-    
     /**
     * Called when the timer for the beacon expires.
     * When this timer is fired, the mote broadcasts a beacon
