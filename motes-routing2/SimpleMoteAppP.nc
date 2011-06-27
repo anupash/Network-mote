@@ -38,9 +38,9 @@ module SimpleMoteAppP{
 }
 implementation{
 
-    /*************/
-    /* Variables */
-    /*************/
+    /*****************************/
+    /* General purpose variables */
+    /*****************************/
 
     // A queue for every mote, in which we save the latest 16 messages to 
     // identify duplicates.
@@ -72,6 +72,22 @@ implementation{
     /* Functions */
     /*************/
 
+    /**
+    * Initialize variables and timers of the routing module
+    */
+    void initRouting() {
+      
+      // start the timers for the beacon and for the routing updates
+      call TimerBeacon.startPeriodic(2000);
+      call TimerRoutingUpdate.startPeriodic(10000);
+      
+      // start timer for checking dead neighbors
+      call TimerNeighborsAlive.startPeriodic(1000);
+      
+      // initialize routing table variables
+      noOfRoutes = 0;
+    }
+    
     /** 
      * Test, whether an message signature is in the queue (was recently seen).
      * 
@@ -121,6 +137,158 @@ implementation{
         }
     }
 
+
+    /**
+    * Function for broadcasting a beacon
+    */
+    void sendBeacon() {
+      beacons_t* beaconpkt = (beacons_t*)(call Packet.getPayload(&pkt, sizeof(beacons_t)));
+      
+      beaconpkt->node_id = TOS_NODE_ID;     // Node that created the packet			
+      
+      // broadcast beacon over the radio
+      sR_dest = AM_BROADCAST_ADDR; sR_m = pkt; sR_len = sizeof(beacons_t);
+      post sendRadio();
+    }
+
+    /**
+    * Functions for sending the routing updates to the neighbors
+    */
+    void sendRoutingUpdate() {
+      uint8_t i;
+
+      routing_update_t* r_update_pkt = (routing_update_t*)(call Packet.getPayload(&pkt, sizeof(routing_update_t)));
+      
+      r_update_pkt->node_id = TOS_NODE_ID;
+      r_update_pkt->num_of_records = noOfRoutes;			
+      
+      // routes from the routing table
+      for (i = 0; i < noOfRoutes; i++) {
+	r_update_pkt->records[i].node_id = routingTable[i].node_id;
+	r_update_pkt->records[i].metric = routingTable[i].metric;
+      }
+
+      // broadcast the routing updates over the radio
+      sR_dest = AM_BROADCAST_ADDR;
+      sR_m = pkt;
+      sR_len = sizeof(routing_update_t);
+      post sendRadio();
+    }  
+    
+
+    /**
+    * Resolves the next hop for a message and forwards it
+    * If it is not found, the broadcast address is used.
+    * 
+    * @param msg the message to be sent
+    * @param len the length of the message to be sent
+    * 
+    */
+    void forwardPacket(message_t* msg, uint8_t len) {
+      uint8_t i;
+      am_addr_t nextHopAddress;
+      am_addr_t destination;
+      bool found = FALSE;
+      
+      myPacketHeader* myph = (myPacketHeader*) msg;
+      destination = myph->destination;
+      
+      for (i = 0; i < noOfRoutes; i++) {
+	if (destination == routingTable[i].node_addr) {
+	  nextHopAddress = routingTable[i].nexthop;
+	  found = TRUE;
+	  break;
+	}
+      }
+      // If the the address was not found, use by default the broadcast.
+      if (!found)
+	nextHopAddress = AM_BROADCAST_ADDR;
+      
+      if (nextHopAddress == AM_BROADCAST_ADDR) {			// The address is not found!!!!
+	  ///TODO: what to do when the address is not found?
+      }
+
+      sR_dest = nextHopAddress; sR_m = *msg; sR_len = len;
+      post sendRadio();
+    }
+
+
+    /**
+    * Process the information received in a beacon (add a new neighbor or confirm existing ones)
+    * 
+    * @param beaconMsg the beacon message received
+    * @param sourceAddr the address if the node sending the beacon
+    * 
+    */
+    void processBeacon(beacons_t* beaconMsg, am_addr_t sourceAddr) {
+      bool isAlreadyNeighbor = FALSE;
+      uint8_t i;
+      
+      for (i = 0; i < noOfRoutes; i++)
+	if (routingTable[i].node_id == beaconMsg->node_id) {           // if a route already exists, reset the timeout
+	  routingTable[i].timeout = MAX_TIMEOUT;
+	  isAlreadyNeighbor = TRUE;
+	  break;
+	}
+	
+      if (!isAlreadyNeighbor) {                                        // else, add a new neighbor to the routing table
+	noOfRoutes++;
+	routingTable[noOfRoutes - 1].node_id = beaconMsg->node_id;
+	routingTable[noOfRoutes - 1].node_addr = sourceAddr;
+	routingTable[noOfRoutes - 1].metric = 1;
+	routingTable[noOfRoutes - 1].nexthop = TOS_NODE_ID;
+	routingTable[noOfRoutes - 1].timeout = MAX_TIMEOUT;
+	
+	// if changes in the topology have occurred, send updates
+	sendRoutingUpdate();
+      }
+    }
+
+
+    /**
+    * Process the information received in a routing update
+    * 
+    * @param routingUpdateMsg the message with the routing updates
+    * @param sourceAddr the address of the source nodes
+    * 
+    */
+    void processRoutingUpdate(routing_update_t* routingUpdateMsg, am_addr_t sourceAddr) {
+
+      uint8_t i, j;
+      bool isAlreadyInTable = FALSE;
+      
+      // For each entry in the routing update received, check if this entry exists in the routing table and update it or create it
+      uint8_t senderNodeId = routingUpdateMsg->node_id;
+      uint8_t noOfRoutesUpdate = routingUpdateMsg->num_of_records;
+      routing_record_t* updateRecords = routingUpdateMsg->records;
+      
+      for (i = 0; i < noOfRoutesUpdate; i++) {
+	for (j = 0; j < noOfRoutes; j++) {                       
+	  // If there is an entry, check if the new route is better and update the next hop & metric
+	  if (routingTable[i].node_id == updateRecords[i].node_id && routingTable[i].metric > updateRecords[i].metric + 1) { 
+	    routingTable[i].nexthop = senderNodeId;
+	    routingTable[i].metric = updateRecords[i].metric + 1;
+	  }
+	  else {                                                         // If there is not an entry, create one.
+	    if (noOfRoutes < MAX_NUM_RECORDS)
+	      noOfRoutes++;
+	    else return;
+	    routingTable[noOfRoutes - 1].node_id = updateRecords[i].node_id;
+	    routingTable[noOfRoutes - 1].node_addr = sourceAddr;
+	    routingTable[noOfRoutes - 1].metric = updateRecords[i].metric + 1;
+	    routingTable[noOfRoutes - 1].nexthop = senderNodeId;
+	    routingTable[noOfRoutes - 1].timeout = MAX_TIMEOUT;
+	  }
+	}
+      }
+    }
+
+
+    /*******************/
+    /* Debug functions */
+    /*******************/
+
+
     /** 
      * Toggles a LED when a message is send to the radio. 
      */
@@ -141,7 +309,8 @@ implementation{
     void failBlink(){
         call Leds.led2Toggle();
     }
-    
+
+
     /*********/
     /* Tasks */
     /*********/
@@ -176,189 +345,7 @@ implementation{
         call SerialSend.send(AM_BROADCAST_ADDR, &ack_msg, 0);
     }
     
-    /*********************/
-    /* Tasks for routing */
-    /*********************/
-    
-    /**
-    * Task for broadcasting the beacon
-    */
-    task void sendBeacon() {
-      //if (!radioBusy) {
-	beacons_t* beaconpkt = (beacons_t*)(call Packet.getPayload(&pkt, sizeof(beacons_t)));
-	
-	beaconpkt->node_id = TOS_NODE_ID;     // Node that created the packet			
-	
-	// broadcast beakon over the radio
-	sR_dest = AM_BROADCAST_ADDR; sR_m = pkt; sR_len = sizeof(beacons_t);
-	post sendRadio();
-
-	//if (call RadioSend.send[AM_BEACON](AM_BROADCAST_ADDR, &pkt, sizeof(beacons_t)) == SUCCESS)
-	  //radioBusy = TRUE;
-	//else
-	  //post sendBeacon();
-      //}
-      //else
-      //  post sendBeacon();
-    }
-
-    /**
-    * Task for sending the routing updates to the neighbors
-    */
-    task void sendRoutingUpdate() {
-      uint8_t i;
-      //if (!radioBusy) {
-	routing_update_t* r_update_pkt = (routing_update_t*)(call Packet.getPayload(&pkt, sizeof(routing_update_t)));
-	
-	r_update_pkt->node_id = TOS_NODE_ID;
-	r_update_pkt->num_of_records = noOfRoutes;			
-	
-	// routes from the routing table
-	for (i = 0; i < noOfRoutes; i++) {
-	  r_update_pkt->records[i].node_id = routingTable[i].node_id;
-	  r_update_pkt->records[i].metric = routingTable[i].metric;
-	}
-
-	//if (call RadioSend.send[AM_ROUTING_UPDATE](AM_BROADCAST_ADDR, &pkt, sizeof(routing_update_t)) == SUCCESS)
-	//  radioBusy = TRUE;
-	//else
-	//  post sendRoutingUpdate();
-	
-	// broadcast beakon over the radio
-	sR_dest = AM_BROADCAST_ADDR;
-	sR_m = pkt;
-	sR_len = sizeof(routing_update_t);
-	post sendRadio();
-
-      //}
-      //else
-      //post sendRoutingUpdate();
-    }  
-    
-    /*************************/
-    /* Functions for routing */
-    /*************************/
-    
-    /**
-    * Initialize variables and timers of the routing module
-    */
-    void initRouting() {
-      
-      // start the timers for the beacon and for the routing updates
-      call TimerBeacon.startPeriodic(2000);
-      call TimerRoutingUpdate.startPeriodic(10000);
-      
-      // start timer for checking dead neighbors
-      call TimerNeighborsAlive.startPeriodic(1000);
-      
-      // initialize routing table variables
-      noOfRoutes = 0;
-    }
-    
-    /**
-    * Resolves the next hop for a message and forwards it
-    * If it is not found, the broadcast address is used.
-    */
-    void forwardPacket(message_t* m, uint8_t len) {
-      uint8_t i;
-      am_addr_t nexthopAddress;
-      am_addr_t destination;
-      bool found = FALSE;
-      
-      myPacketHeader* myph = (myPacketHeader*) m;
-      destination = myph->destination;
-      
-      for (i = 0; i < noOfRoutes; i++) {
-	if (destination == routingTable[i].node_addr) {
-	  nexthopAddress = routingTable[i].nexthop;
-	  found = TRUE;
-	}
-      }
-      // If the for loop finishes, the address was not found. Use by default the broadcast.
-      if (!found)
-	nexthopAddress = AM_BROADCAST_ADDR;
-      
-      if (nexthopAddress == AM_BROADCAST_ADDR) {			// The address is not found!!!!
-	  ///TODO: what to do when the address is not found?
-      }
-
-      sR_dest = nexthopAddress; sR_m = *m; sR_len = len;
-      post sendRadio();
-    }
-
-    /**
-    * Recalculate best paths after a topology change
-    */
-    void recalculateBestPaths() {
-      ///TODO for each route, recalculate metric and hop count
-    }
-
-    /**
-    * Process the information received in a beacon (add a new neighbor or confirm existing ones)
-    * 
-    * @param beaconMsg the beacon message received
-    * @param beaconAddr the address if the node sending the beacon
-    * 
-    */
-    void processBeacon(beacons_t* beaconMsg, am_addr_t beaconAddr) {
-      bool isAlreadyNeighbor = FALSE;
-      uint8_t i;
-      
-      for (i = 0; i < noOfRoutes; i++)
-	if (routingTable[i].node_id == beaconMsg->node_id) {           // if a route already exists, reset the timeout
-	  routingTable[i].timeout = MAX_TIMEOUT;
-	  isAlreadyNeighbor = TRUE;
-	  break;
-	}
-	
-      if (!isAlreadyNeighbor) {                                        // else, add a new neighbor to the routing table
-	noOfRoutes++;
-	routingTable[noOfRoutes - 1].node_id = beaconMsg->node_id;
-	routingTable[noOfRoutes - 1].node_addr = beaconAddr;
-	routingTable[noOfRoutes - 1].metric = 1;
-	routingTable[noOfRoutes - 1].nexthop = TOS_NODE_ID;
-	routingTable[noOfRoutes - 1].timeout = MAX_TIMEOUT;
-	
-	// if changes in the topology have occurred, recalculate paths and send updates
-	recalculateBestPaths();
-	post sendRoutingUpdate();
-      }
-    }
-
-    /**
-    * Process the information received in a routing update
-    * 
-    * @param routingUpdateMsg the beacon message received
-    * @param beaconAddr the address if the node sending the beacon
-    * 
-    */
-    void processRoutingUpdate(routing_update_t* routingUpdateMsg, am_addr_t beaconAddr) {
-      uint8_t i;
-      uint8_t j;
-      bool isAlreadyInTable = FALSE;
-      
-      // Foreach entry in the routing update received, check if this entry exists in the routing table and update it or create it
-      uint8_t sender_node_id = routingUpdateMsg->node_id;
-      uint8_t noOfRoutesUpdate = routingUpdateMsg->num_of_records;
-      routing_record_t* updateRecords = routingUpdateMsg->records;
-      
-      for (i = 0; i < noOfRoutesUpdate; i++) {
-	for (j = 0; j < noOfRoutes; j++) {                       // Given an update, check if we have an entry in our routing table. 
-	  if (routingTable[i].node_id == updateRecords[i].node_id) {    // If there is an entry, update the next hop & metric
-	    routingTable[i].nexthop = sender_node_id;
-	    routingTable[i].metric = updateRecords[i].metric + 1;
-	  }
-	  else {                                                         // If there is not an entry, create one.
-	    noOfRoutes++;
-	    routingTable[noOfRoutes - 1].node_id = updateRecords[i].node_id;
-	    routingTable[noOfRoutes - 1].node_addr = beaconAddr;
-	    routingTable[noOfRoutes - 1].metric = updateRecords[i].metric + 1;
-	    routingTable[noOfRoutes - 1].nexthop = sender_node_id;
-	    routingTable[noOfRoutes - 1].timeout = MAX_TIMEOUT;
-	  }
-	}
-      }
-    }
+   
 
     /**********/
     /* Events */
@@ -539,7 +526,7 @@ implementation{
     * @see tos.interfaces.Timer.fired
     */
     event void TimerBeacon.fired() {
-      post sendBeacon();
+      sendBeacon();
     }
     
     /**
@@ -550,7 +537,7 @@ implementation{
     * @see tos.interfaces.Timer.fired
     */
     event void TimerRoutingUpdate.fired() {
-      post sendRoutingUpdate();
+      sendRoutingUpdate();
     }
     
     /**
@@ -561,27 +548,17 @@ implementation{
     * @see tos.interfaces.Timer.fired
     */
     event void TimerNeighborsAlive.fired() {
-      uint8_t i;
-      uint8_t j;
-      
-      for (i = 0; i < noOfRoutes; i++)
-	if (routingTable[i].timeout <= 0) {             // Timer expired, delete entry
 
-	  for (j = i; j < noOfRoutes; j++) {
-	    if (j != noOfRoutes - 1) {			// Not the last element yet
-	      routingTable[j].node_id = routingTable[j+1].node_id;
-	      routingTable[j].node_addr = routingTable[j+1].node_addr;
-	      routingTable[j].metric = routingTable[j+1].metric;
-	      routingTable[j].timeout = routingTable[j+1].timeout;
-	    }
-	    else {					// Reached the last element
-	      --noOfRoutes;
-	      break;
-	    }
-	  }
+      uint8_t i, j;
+      
+      for (i = 0; i < noOfRoutes; i++) {
+	routingTable[i].timeout--;
+	// if the timeout becomes 0, remove the route from the routing table
+	if (routingTable[i].timeout == 0) {
+	  for (j = i; j < noOfRoutes - 1; j++)
+	    routingTable[j] = routingTable[i + 1];
+	  noOfRoutes--;
 	}
-	else {						// Timer not expired, decrease it
-	  routingTable[i].timeout = routingTable[i].timeout - 1;
-	}
+      }
     }
 }

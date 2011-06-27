@@ -13,21 +13,18 @@ generic configuration RoutingModuleC() @safe() {
 }
 
 implementation {
+  // The main application
+  components SimpleMoteAppC as App;
+  
   // The routing module
   components new RoutingModuleP() as RoutingModuleP;
   
   // The radio components
-  components ActiveMessageC;
-  components new AMSenderC(AM_ROUTING);
-  components new AMReceiverC(AM_ROUTING);
-  
-  RoutingModuleP.RadioControl -> ActiveMessageC;
-  
-  RoutingModuleP.RadioSend -> AMSenderC;
-  RoutingModuleP.Packet -> AMSenderC;
-  RoutingModuleP.AMPacket -> AMSenderC;
+  RoutingModuleP.RadioSend -> App;
+  RoutingModuleP.Packet -> App;
+  RoutingModuleP.AMPacket -> App;
 
-  RoutingModuleP.RadioReceive -> ActiveMessageC.Receive;
+  RoutingModuleP.RadioReceive -> App.Receive;
   
 
 //   RoutingModuleP.PacketAcknowledgements -> ActiveMessageC;
