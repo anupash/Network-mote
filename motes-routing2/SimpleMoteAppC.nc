@@ -35,7 +35,7 @@ implementation{
     SimpleMoteAppP.RadioControl -> Radio;
     SimpleMoteAppP.RadioReceive -> Radio.Receive[AM_SIMPLE_RADIO];
     SimpleMoteAppP.RadioSend -> RadioQueue;
-    /* SimpleMoteAppP.RadioSend -> Radio.AMSend[AM_SIMPLE_RADIO]; */
+    /* SimpleMoteAppP.RadioSend -> Radio.AMSend[am_id_t id]; */
   
     // Serial components
     components SerialActiveMessageC as Serial;

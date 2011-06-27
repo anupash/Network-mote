@@ -183,9 +183,9 @@ implementation{
     */
     void sendBeacon() {
       beacons_t* beaconpkt = (beacons_t*)(call Packet.getPayload(&pkt, sizeof(beacons_t)));
-      
+  
       beaconpkt->node_id = TOS_NODE_ID;     // Node that created the packet			
-      
+     	call AMPacket.setType(&pkt,AM_BEACON);     
       // broadcast beacon over the radio
       sR_dest = AM_BROADCAST_ADDR; sR_m = pkt; sR_len = sizeof(beacons_t);
       post sendRadio();
@@ -207,7 +207,7 @@ implementation{
 	r_update_pkt->records[i].node_id = routingTable[i].node_id;
 	r_update_pkt->records[i].metric = routingTable[i].metric;
       }
-
+		call AMPacket.setType(&pkt,AM_ROUTING_UPDATE);
       // broadcast the routing updates over the radio
       sR_dest = AM_BROADCAST_ADDR;
       sR_m = pkt;
@@ -244,7 +244,7 @@ implementation{
       if (!found)
 	//nextHopAddress = AM_BROADCAST_ADDR;
 	///TODO drop packet??
-      
+     call AMPacket.setType(&pkt,AM_IP); 
       sR_dest = nextHopAddress; sR_m = *msg; sR_len = len;
       post sendRadio();
     }
