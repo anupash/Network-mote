@@ -496,7 +496,7 @@ implementation{
 	    }
 	  break;
 	
-	default: ;
+	default: call Leds.led2Toggle();
       }
       
       return m;
