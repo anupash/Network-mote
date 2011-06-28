@@ -51,4 +51,13 @@ implementation{
     // Packet interfaces
     SimpleMoteAppP.Packet -> Radio;
     SimpleMoteAppP.AMPacket -> Radio;
+    
+    // The timer components
+    components new TimerMilliC() as TimerMilliBeacon;
+    components new TimerMilliC() as TimerMilliRoutingUpdate;
+    components new TimerMilliC() as TimerMilliNeighborsAlive;
+    SimpleMoteAppP.TimerBeacon -> TimerMilliBeacon;
+    SimpleMoteAppP.TimerRoutingUpdate -> TimerMilliRoutingUpdate; 
+    SimpleMoteAppP.TimerNeighborsAlive -> TimerMilliNeighborsAlive;
+    
 }

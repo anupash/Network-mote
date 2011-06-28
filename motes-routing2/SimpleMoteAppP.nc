@@ -416,10 +416,13 @@ implementation{
 
     /** 
      * Called, when the radio module was started.
+     * Starts the routing timers and functionality
      * 
      * @see tos.interfaces.SplitControl.startDone
      */
-    event void RadioControl.startDone(error_t err){}
+    event void RadioControl.startDone(error_t err){
+	initRouting();
+    }
     /** 
      * Called, when the radio module was stopped.
      * 
