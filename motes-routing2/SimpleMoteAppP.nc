@@ -283,7 +283,7 @@ implementation{
       
       myPacketHeader* myph = (myPacketHeader*) msg;
       destination = myph->destination;
-      
+      printf("[forwardPacket] At node= %u destination received = %u ",TOS_NODE_ID,destination); 
       for (i = 0; i < noOfRoutes; i++) {
 	if (destination == routingTable[i].node_addr) {
 	  nextHopAddress = routingTable[i].nexthop;
@@ -512,6 +512,8 @@ implementation{
     event void IPRadioSend.sendDone(message_t* m, error_t err){	
         if(err == SUCCESS){
             radioBlink();
+			printf("IP Packet sent successfully from %u to %u \n",TOS_NODE_ID,sR_dest);
+
         }else{
             failBlink();
         }
@@ -526,6 +528,8 @@ implementation{
         beaconRadioBusy = FALSE;
 	if(err == SUCCESS){
             radioBlink();
+			printf("Beacon sent successfully from %u to %u \n",TOS_NODE_ID,sR_dest);
+
         }else{
             failBlink();
         }
@@ -540,6 +544,7 @@ implementation{
         routingRadioBusy = FALSE;
 	if(err == SUCCESS){
             radioBlink();
+			printf("Routing update sent successfully from %u to %u \n",TOS_NODE_ID,sR_dest);
         }else{
             failBlink();
         }
@@ -562,6 +567,7 @@ implementation{
 	myph = (myPacketHeader*) payload;
 	source = myph->sender;
 
+	printf("[IPRadioReceive] from source = %u \n",source);
 	// Test, whether this message is a duplicate
 	if (!inQueue(source, myph->seq_no, myph->ord_no)) {
 	  // Add this message to the queue of seen messages
@@ -619,6 +625,7 @@ implementation{
 	  return m;
 	
 	source = call AMPacket.source(m);
+	printf("[RoutingRadioReceive.receive] from source=%u \n",source);
 	receivedRoutingUpdate = (routing_update_t*) payload;
 	processRoutingUpdate(receivedRoutingUpdate, source);
 	
