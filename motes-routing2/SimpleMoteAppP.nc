@@ -622,7 +622,7 @@ implementation{
 	if(call AMPacket.type(m) != AM_IP){
 		call Leds.led1Toggle();	  return m;
 	}else if (len!= sizeof(myPacketHeader)){
-		call Leds.led2Toggle();	return;
+		call Leds.led2Toggle();	return m;
 	}
 
 
