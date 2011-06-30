@@ -376,11 +376,13 @@ implementation{
       
       // For each entry in the routing update received, check if this entry exists in the routing table and update it or create it
     for (i = 0; i < noOfRoutesUpdate; i++) {
+      printf("[processRoutingUpdate] inside first [FOR] i = %u loop\n",i);
 	  for (j = 0; j < noOfRoutes; j++) {                       
 	  // If there is an entry, check if the new route is better and update the next hop & metric
 	    if (routingTable[i].node_id == updateRecords[i].node_id && routingTable[i].metric > updateRecords[i].metric + 1) { 
     	    routingTable[i].nexthop = senderNodeId;
 	        routingTable[i].metric = updateRecords[i].metric + 1;
+            routingTable[i].timeout = MAX_TIMEOUT;   // addeed because timeout timer has to be reset everytime a new update comes
             printf("[processRoutingUpdate] New Route is better in [IF]\n",senderNodeId, sourceAddr);
 	      }
     	  else {                                                         // If there is not an entry, create one.
@@ -680,6 +682,7 @@ implementation{
 	    routingTable[j] = routingTable[j + 1];
 	  noOfRoutes--;
 	}
+      printf("[TimerNeighborsAlive.fired()] One Neighbour removed due to timeout\n");
       }
     }
 }
