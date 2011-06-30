@@ -64,7 +64,7 @@ implementation{
     am_addr_t sR_dest;
     message_t sR_m;
     uint8_t sR_len;
-    uint8_t sR_type;
+    uint16_t sR_type;
     
     // Variables used for serial sending task
     am_addr_t sS_dest;

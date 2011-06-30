@@ -71,9 +71,9 @@ enum {
  * Types of messages for the routing module
  */
 enum {
-  AM_BEACON = 0x10,
-  AM_ROUTING_UPDATE = 0x11,
-  AM_IP = 0x12
+  AM_BEACON = 10,
+  AM_ROUTING_UPDATE = 11,
+  AM_IP = 12
 };
 
 typedef nx_struct routing_record {
