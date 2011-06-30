@@ -113,7 +113,7 @@ implementation{
 	    if (!radioBusy) {
 	      call RoutingRadioSend.send(sR_dest, &sR_m, sR_len);
 	      radioBusy = TRUE;
-// 	      call Leds.led1Toggle();
+	      call Leds.led1Toggle();
 	    }
 	    else 
 	      post sendRadio();
@@ -155,7 +155,7 @@ implementation{
 
       // start the timers for the beacon and for the routing updates
       call TimerBeacon.startPeriodic(2000);
-//       call TimerRoutingUpdate.startPeriodic(10000);
+      call TimerRoutingUpdate.startPeriodic(10000);
       
       // start timer for checking dead neighbors
       call TimerNeighborsAlive.startPeriodic(1000);
@@ -340,9 +340,10 @@ implementation{
 	    routingTable[i].metric = updateRecords[i].metric + 1;
 	  }
 	  else {                                                         // If there is not an entry, create one.
-	    if (noOfRoutes < MAX_NUM_RECORDS)
-	      noOfRoutes++;
-	    else return;
+	    if (updateRecords[i].node_id == TOS_NODE_ID || noOfRoutes >= MAX_NUM_RECORDS)
+	      return;
+	    
+	    noOfRoutes++;
 	    routingTable[noOfRoutes - 1].node_id = updateRecords[i].node_id;
 	    routingTable[noOfRoutes - 1].node_addr = sourceAddr;
 	    routingTable[noOfRoutes - 1].metric = updateRecords[i].metric + 1;
@@ -553,7 +554,7 @@ implementation{
 
 	beacons_t* receivedBeacon;
 	am_addr_t source;
-      
+	
 	// discard if not a valid message
 	if (len != sizeof(beacons_t)  || call AMPacket.type(m) != AM_BEACON)
 	  return m;
