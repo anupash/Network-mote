@@ -101,6 +101,7 @@ implementation{
 	  
 	  case AM_IP: 
 	    call IPRadioSend.send(sR_dest, &sR_m, sR_len);
+			printf("[sendRadio] AM_IP sent from %u = to %u = \n",TOS_NODE_ID,sR_dest);
 	    break;
 	  
 	  case AM_BEACON: 
@@ -122,6 +123,7 @@ implementation{
 	      if (call RoutingRadioSend.send(sR_dest, &sR_m, sR_len) == SUCCESS){
 		routingRadioBusy = TRUE;
 		call Leds.led1Toggle();
+			printf("[sendRadio] AM_ROUTING_UPDATE sent from %u = to %u = \n",TOS_NODE_ID,sR_dest);
 	      }
 	      else {
 		routingRadioBusy = FALSE;
