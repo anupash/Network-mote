@@ -110,15 +110,22 @@ implementation{
 	      post sendRadio();
 	    break;
 	  case AM_ROUTING_UPDATE:
+	    
 	    if (!radioBusy) {
-	      call RoutingRadioSend.send(sR_dest, &sR_m, sR_len);
-	      radioBusy = TRUE;
+	      if (call RoutingRadioSend.send(sR_dest, &sR_m, sR_len) == SUCCESS){
+		radioBusy = TRUE;
+	      }
+	      else {
+		radioBusy = FALSE;
+		post sendRadio();
+	      }
+	    }
+	    else {
+	      post sendRadio();
 	      call Leds.led1Toggle();
 	    }
-	    else 
-	      post sendRadio();
 	    break;
-	  default: call Leds.led2Toggle();
+	  default: ;
 	}
     }
 
@@ -155,7 +162,7 @@ implementation{
 
       // start the timers for the beacon and for the routing updates
       call TimerBeacon.startPeriodic(2000);
-      call TimerRoutingUpdate.startPeriodic(10000);
+      call TimerRoutingUpdate.startPeriodic(5000);
       
       // start timer for checking dead neighbors
 //       call TimerNeighborsAlive.startPeriodic(1000);
@@ -229,7 +236,6 @@ implementation{
     */
     void sendRoutingUpdate() {
       uint8_t i;
-
       routing_update_t* r_update_pkt = (routing_update_t*)(call Packet.getPayload(&pkt, sizeof(routing_update_t)));
       
       r_update_pkt->node_id = TOS_NODE_ID;
@@ -364,7 +370,7 @@ implementation{
      * Toggles a LED when a message is send to the radio. 
      */
     void radioBlink(){
-        call Leds.led0Toggle();
+        //call Leds.led0Toggle();
     }
 
     /** 
