@@ -346,6 +346,7 @@ implementation{
     void processRoutingUpdate(routing_update_t* routingUpdateMsg, am_addr_t sourceAddr) {
 
       uint8_t i, j;
+      int idx=-1;
       bool isNeighbor = FALSE;
       
       uint8_t senderNodeId = routingUpdateMsg->node_id;
@@ -355,39 +356,85 @@ implementation{
       printf("inside [processRoutingUpdate]\n"); 
       // check if the source is already in the routing table
       for (i = 0; i < noOfRoutes; i++)
-	// if it has a route to it, make metric 1 (make it a neighbor)
-	if (routingTable[i].node_id == senderNodeId) {
-	  routingTable[i].metric = 1;
-	  routingTable[i].nexthop = senderNodeId;
-	  isNeighbor = TRUE;
-	  break;
-	}
+	    // if it has a route to it, make metric 1 (make it a neighbor)
+	    if (routingTable[i].node_id == senderNodeId) {
+	      routingTable[i].metric = 1;
+    	  routingTable[i].nexthop = senderNodeId;
+          routingTable[i].timeout = MAX_TIMEOUT;
+	      isNeighbor = TRUE;
+      	  break;
+	    }
 
       // if it is not a neighbor already, add it with metric 1
       if (!isNeighbor && noOfRoutes < MAX_NUM_RECORDS) {
-        printf("[processRoutingUpdate] New Neighbour senderNodeID = %u and sourceAddr = %u \n ",senderNodeId, sourceAddr);
-    	noOfRoutes++;
+      	noOfRoutes++;
 	    routingTable[noOfRoutes - 1].node_id = senderNodeId;
     	routingTable[noOfRoutes - 1].node_addr = sourceAddr;
 	    routingTable[noOfRoutes - 1].metric = 1;
     	routingTable[noOfRoutes - 1].nexthop = senderNodeId;
-	    routingTable[noOfRoutes - 1].timeout = MAX_TIMEOUT;	
+	    routingTable[noOfRoutes - 1].timeout = MAX_TIMEOUT;
+        printf("[processRoutingUpdate] New Neighbour senderNodeID = %u and sourceAddr = %u noOfRoutes = %u \n ",senderNodeId, sourceAddr,noOfRoutes);
       }
       
       // For each entry in the routing update received, check if this entry exists in the routing table and update it or create it
     for (i = 0; i < noOfRoutesUpdate; i++) {
-      printf("[processRoutingUpdate] inside first [FOR] i = %u loop\n",i);
+	  for (j = 0; j < noOfRoutes; j++) {                       
+	  // If there is an entry, check if the new route is better and update the next hop & metric
+	    if (routingTable[j].node_id == updateRecords[i].node_id)
+          idx = j;
+      }
+        if(idx == -1){
+          //if not found in my routing table and i am not the neighbour of the sender
+          //important because the sender would have been already added to the routing table
+          if(updateRecords[i].node_id != TOS_NODE_ID){
+    	    noOfRoutes++;
+	        routingTable[noOfRoutes - 1].node_id = updateRecords[i].node_id;
+	        routingTable[noOfRoutes - 1].node_addr = sourceAddr;
+    	    routingTable[noOfRoutes - 1].metric = updateRecords[i].metric + 1;
+    	    routingTable[noOfRoutes - 1].nexthop = senderNodeId;
+	        routingTable[noOfRoutes - 1].timeout = MAX_TIMEOUT;
+            printf("[processRoutingUpdate] when idx = -1 added node_id = %u TOS_NODE_ID = %u \n",updateRecords[i].node_id,TOS_NODE_ID);
+          }
+        }else{
+			if(noOfRoutes >= MAX_NUM_RECORDS) return;
+            //[not important can be removed] but check again before removing
+            //case where sender is the neighbour 
+			else if ((updateRecords[i].node_id == TOS_NODE_ID) && (routingTable[idx].node_id == senderNodeId)){
+       	      routingTable[idx].metric = 1;
+       	      routingTable[idx].nexthop = senderNodeId;
+	          routingTable[idx].timeout = MAX_TIMEOUT;
+	          return;
+            }
+			else if( routingTable[idx].metric > updateRecords[idx].metric + 1) { 
+    	      routingTable[idx].nexthop = senderNodeId;
+	          routingTable[idx].metric = updateRecords[i].metric + 1;
+              routingTable[idx].timeout = MAX_TIMEOUT;   // addeed because timeout timer has to be reset everytime a new update comes
+              printf("[processRoutingUpdate] New Route is better in [IF] sender = %u source = %u \n",senderNodeId, sourceAddr);
+	      	} 
+    	  	else {      
+	      	}
+        }  
+	   
+    }
+    
+  }
+
+/*
+    for (i = 0; i < noOfRoutesUpdate; i++) {
+      printf("[processRoutingUpdate] inside first [FOR] i = %u loop and noOfRoutes = %u\n",i,noOfRoutes);
 	  for (j = 0; j < noOfRoutes; j++) {                       
 	  // If there is an entry, check if the new route is better and update the next hop & metric
 	    if (routingTable[i].node_id == updateRecords[i].node_id && routingTable[i].metric > updateRecords[i].metric + 1) { 
     	    routingTable[i].nexthop = senderNodeId;
 	        routingTable[i].metric = updateRecords[i].metric + 1;
             routingTable[i].timeout = MAX_TIMEOUT;   // addeed because timeout timer has to be reset everytime a new update comes
-            printf("[processRoutingUpdate] New Route is better in [IF]\n",senderNodeId, sourceAddr);
+            printf("[processRoutingUpdate] New Route is better in [IF] sender = %u source = %u \n",senderNodeId, sourceAddr);
 	      }
     	  else {                                                         // If there is not an entry, create one.
-    	      if (updateRecords[i].node_id == TOS_NODE_ID || noOfRoutes >= MAX_NUM_RECORDS)
+    	      if (updateRecords[i].node_id == TOS_NODE_ID || noOfRoutes >= MAX_NUM_RECORDS){
+                printf("[processRoutingUpdate] in [ELSE] -> [IF]  and noOfRoutes = %u and updateRecords[i].node_id = %u \n",noOfRoutes,updateRecords[i].node_id);
 	            return;
+              }
 	    
     	    noOfRoutes++;
 	        routingTable[noOfRoutes - 1].node_id = updateRecords[i].node_id;
@@ -395,13 +442,12 @@ implementation{
     	    routingTable[noOfRoutes - 1].metric = updateRecords[i].metric + 1;
     	    routingTable[noOfRoutes - 1].nexthop = senderNodeId;
 	        routingTable[noOfRoutes - 1].timeout = MAX_TIMEOUT;
-            printf("[processRoutingUpdate] in [ELSE]\n",senderNodeId, sourceAddr);
+            printf("[processRoutingUpdate] in [ELSE]\n");
 
 	    }
 	  } 
     }
-  }
-
+*/
 
     /*******************/
     /* Debug functions */
@@ -675,14 +721,14 @@ implementation{
       uint8_t i, j;
       
       for (i = 0; i < noOfRoutes; i++) {
-	routingTable[i].timeout--;
-	// if the timeout becomes 0, remove the route from the routing table
-	if (routingTable[i].timeout == 0) {
-	  for (j = i; j < noOfRoutes - 1; j++)
-	    routingTable[j] = routingTable[j + 1];
-	  noOfRoutes--;
-	}
-      printf("[TimerNeighborsAlive.fired()] One Neighbour removed due to timeout\n");
+	    routingTable[i].timeout--;
+    	// if the timeout becomes 0, remove the route from the routing table
+	    if (routingTable[i].timeout == 0) {
+  	      for (j = i; j < noOfRoutes - 1; j++)
+	        routingTable[j] = routingTable[j + 1];
+          noOfRoutes--;
+          printf("[TimerNeighborsAlive.fired()] One Neighbour removed due to timeout\n");
+	    }
       }
     }
 }
