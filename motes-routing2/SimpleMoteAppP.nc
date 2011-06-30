@@ -302,7 +302,7 @@ implementation{
       // else forward it
       else{
         sR_type = AM_IP;
-        sR_dest = nextHopAddress; sR_m = *msg; sR_len = sizeof(myPacketHeader);
+        sR_dest = nextHopAddress; sR_m = *msg; sR_len = len;
         post sendRadio();
       }
     }
@@ -621,9 +621,9 @@ implementation{
 	// discard if not a valid message
 	if(call AMPacket.type(m) != AM_IP){
 		call Leds.led1Toggle();	  return m;
-	}else if (len!= sizeof(myPacketHeader)){
+	}/*else if (len!= sizeof(myPacketHeader)){
 		call Leds.led2Toggle();	return m;
-	}
+	}*/
 
 
 	myph = (myPacketHeader*) payload;
