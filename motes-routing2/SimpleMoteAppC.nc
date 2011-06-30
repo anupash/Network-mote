@@ -33,16 +33,16 @@ implementation{
     IPRadioQueue.Packet -> Radio;
 
     // Radio components - Beacon packets
-    components new SendQueueC(RADIO_QUEUE_SIZE, sizeof(message_t)) as BeaconRadioQueue;
-    BeaconRadioQueue.LowSend -> Radio.AMSend[AM_BEACON];
-    BeaconRadioQueue.AMPacket -> Radio;
-    BeaconRadioQueue.Packet -> Radio;
+//     components new SendQueueC(RADIO_QUEUE_SIZE, sizeof(message_t)) as BeaconRadioQueue;
+//     BeaconRadioQueue.LowSend -> Radio.AMSend[AM_BEACON];
+//     BeaconRadioQueue.AMPacket -> Radio;
+//     BeaconRadioQueue.Packet -> Radio;
 
     // Radio components - IP packets
-    components new SendQueueC(RADIO_QUEUE_SIZE, sizeof(message_t)) as RoutingRadioQueue;
+/*    components new SendQueueC(RADIO_QUEUE_SIZE, sizeof(message_t)) as RoutingRadioQueue;
     RoutingRadioQueue.LowSend -> Radio.AMSend[AM_ROUTING_UPDATE];
     RoutingRadioQueue.AMPacket -> Radio;
-    RoutingRadioQueue.Packet -> Radio;
+    RoutingRadioQueue.Packet -> Radio;*/
     
     SimpleMoteAppP.RadioControl -> Radio;
     
@@ -50,10 +50,10 @@ implementation{
     SimpleMoteAppP.IPRadioSend -> IPRadioQueue;
     
     SimpleMoteAppP.BeaconRadioReceive -> Radio.Receive[AM_BEACON];
-    SimpleMoteAppP.BeaconRadioSend -> BeaconRadioQueue;
+    SimpleMoteAppP.BeaconRadioSend -> Radio.AMSend[AM_BEACON];
 
     SimpleMoteAppP.RoutingRadioReceive -> Radio.Receive[AM_ROUTING_UPDATE];
-    SimpleMoteAppP.RoutingRadioSend -> RoutingRadioQueue;
+    SimpleMoteAppP.RoutingRadioSend -> Radio.AMSend[AM_ROUTING_UPDATE];
 
     // Serial components
     components SerialActiveMessageC as Serial;

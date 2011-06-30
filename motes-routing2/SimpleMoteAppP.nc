@@ -95,18 +95,28 @@ implementation{
      * A task for sending radio messages
      */
     task void sendRadio(){
-	
+
 	switch (sR_type) {
 	  case AM_IP: 
 	    call IPRadioSend.send(sR_dest, &sR_m, sR_len);
 	    break;
 	  case AM_BEACON: 
-	    call BeaconRadioSend.send(sR_dest, &sR_m, sR_len);
-// 	    call Leds.led1Toggle();
+	    if (!radioBusy) {
+	      call BeaconRadioSend.send(sR_dest, &sR_m, sR_len);
+	      radioBusy = TRUE;
+// 	      call Leds.led1Toggle();
+	    }
+	    else
+	      post sendRadio();
 	    break;
-	  case AM_ROUTING_UPDATE: 
-	    call RoutingRadioSend.send(sR_dest, &sR_m, sR_len);
-	    call Leds.led1Toggle();
+	  case AM_ROUTING_UPDATE:
+	    if (!radioBusy) {
+	      call RoutingRadioSend.send(sR_dest, &sR_m, sR_len);
+	      radioBusy = TRUE;
+// 	      call Leds.led1Toggle();
+	    }
+	    else 
+	      post sendRadio();
 	    break;
 	  default: call Leds.led2Toggle();
 	}
@@ -139,15 +149,16 @@ implementation{
     */
     void initRouting() {
       
+      // initialize routing table variables
+      noOfRoutes = 0;
+      radioBusy = FALSE;
+
       // start the timers for the beacon and for the routing updates
       call TimerBeacon.startPeriodic(2000);
-      call TimerRoutingUpdate.startPeriodic(10000);
+//       call TimerRoutingUpdate.startPeriodic(10000);
       
       // start timer for checking dead neighbors
       call TimerNeighborsAlive.startPeriodic(1000);
-      
-      // initialize routing table variables
-      noOfRoutes = 0;
     }
     
     /** 
@@ -473,7 +484,8 @@ implementation{
      * @see tos.interfaces.Send.sendDone
      */
     event void BeaconRadioSend.sendDone(message_t* m, error_t err){	
-        if(err == SUCCESS){
+        radioBusy = FALSE;
+	if(err == SUCCESS){
             radioBlink();
         }else{
             failBlink();
@@ -486,7 +498,8 @@ implementation{
      * @see tos.interfaces.Send.sendDone
      */
     event void RoutingRadioSend.sendDone(message_t* m, error_t err){	
-        if(err == SUCCESS){
+        radioBusy = FALSE;
+	if(err == SUCCESS){
             radioBlink();
         }else{
             failBlink();
