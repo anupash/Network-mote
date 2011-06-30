@@ -280,7 +280,8 @@ implementation{
     void forwardPacket(message_t* msg, uint8_t len) {
       uint8_t i;
       am_addr_t nextHopAddress = AM_BROADCAST_ADDR;
-      am_addr_t destination = 254;
+      if(TOS_NODE_ID == 1) am_addr_t destination = 254;
+      else (TOS_NODE_ID == 254) am_addr_t destination = 1;
       bool found = FALSE;
       
       myPacketHeader* myph = (myPacketHeader*) msg;
@@ -620,7 +621,7 @@ implementation{
 
 	// discard if not a valid message
 	if(call AMPacket.type(m) != AM_IP){
-		call Leds.led1Toggle();	  return m;
+		return m;
 	}/*else if (len!= sizeof(myPacketHeader)){
 		call Leds.led2Toggle();	return m;
 	}*/
