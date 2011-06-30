@@ -462,7 +462,7 @@ implementation{
      * Toggles a LED when a message is send to the radio. 
      */
     void radioBlink(){
-        call Leds.led0Toggle();
+//        call Leds.led0Toggle();
     }
 
     /** 
