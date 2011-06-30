@@ -280,22 +280,21 @@ implementation{
     void forwardPacket(message_t* msg, uint8_t len) {
       uint8_t i;
       am_addr_t nextHopAddress = AM_BROADCAST_ADDR;
-	  am_addr_t destination = AM_BROADCAST_ADDR;
+	  am_addr_t destination;
 	  bool found = FALSE;
            
       myPacketHeader* myph = (myPacketHeader*) msg;
 
       if(TOS_NODE_ID == 1) destination = 254;
-      else if(TOS_NODE_ID == 254) destination = 1;
+	  else if (TOS_NODE_ID == 254 ) destination = 1;
+      else destination = myph->destination;
  
-      if(TOS_NODE_ID != 1 || TOS_NODE_ID != 254)
-        destination = myph->destination;
-      
-//      printf("[forwardPacket] At node= %u destination received = %u ",TOS_NODE_ID,destination); 
+//    printf("[forwardPacket] At node= %u destination received = %u ",TOS_NODE_ID,destination); 
       for (i = 0; i < noOfRoutes; i++) {
   	    if (destination == routingTable[i].node_addr) {
 	      nextHopAddress = routingTable[i].nexthop;
 	      found = TRUE;
+			call Leds.led2On();
 	      break;
 	    }
       }
@@ -305,6 +304,7 @@ implementation{
 
       // else forward it
       else{
+		if(destination == 1 )call Leds.led1On();
         sR_type = AM_IP;
         sR_dest = nextHopAddress; sR_m = *msg; sR_len = len;
         post sendRadio();
