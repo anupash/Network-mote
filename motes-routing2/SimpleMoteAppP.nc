@@ -158,7 +158,7 @@ implementation{
       call TimerRoutingUpdate.startPeriodic(10000);
       
       // start timer for checking dead neighbors
-      call TimerNeighborsAlive.startPeriodic(1000);
+//       call TimerNeighborsAlive.startPeriodic(1000);
     }
     
     /** 
@@ -302,7 +302,7 @@ implementation{
 	  break;
 	}
 	
-      if (!isAlreadyNeighbor) {                                        // else, add a new neighbor to the routing table
+      if (!isAlreadyNeighbor && noOfRoutes < MAX_NUM_RECORDS) {        // else, add a new neighbor to the routing table
 	noOfRoutes++;
 	routingTable[noOfRoutes - 1].node_id = beaconMsg->node_id;
 	routingTable[noOfRoutes - 1].node_addr = sourceAddr;
