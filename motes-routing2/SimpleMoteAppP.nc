@@ -280,12 +280,15 @@ implementation{
     void forwardPacket(message_t* msg, uint8_t len) {
       uint8_t i;
       am_addr_t nextHopAddress = AM_BROADCAST_ADDR;
-      if(TOS_NODE_ID == 1) am_addr_t destination = 254;
-      else if(TOS_NODE_ID == 254) am_addr_t destination = 1;
-      bool found = FALSE;
-      
+	  am_addr_t destination = AM_BROADCAST_ADDR;
+	  bool found = FALSE;
+           
       myPacketHeader* myph = (myPacketHeader*) msg;
-      if(TOS_NODE_ID != 1)
+
+      if(TOS_NODE_ID == 1) destination = 254;
+      else if(TOS_NODE_ID == 254) destination = 1;
+ 
+      if(TOS_NODE_ID != 1 || TOS_NODE_ID != 254)
         destination = myph->destination;
       
 //      printf("[forwardPacket] At node= %u destination received = %u ",TOS_NODE_ID,destination); 
