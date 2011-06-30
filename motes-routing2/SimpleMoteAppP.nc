@@ -18,8 +18,15 @@ module SimpleMoteAppP{
 
         // Radio interfaces
         interface SplitControl as RadioControl;
-        interface AMSend as RadioSend;
-        interface Receive as RadioReceive;
+        // Send and receive interfaces for the IP packets
+	interface AMSend as IPRadioSend;
+        interface Receive as IPRadioReceive;
+	// Send and receive interfaces for the beacon packets
+	interface AMSend as BeaconRadioSend;
+        interface Receive as BeaconRadioReceive;
+	// Send and receive interfaces for the routing updates
+	interface AMSend as RoutingRadioSend;
+        interface Receive as RoutingRadioReceive;
 
         // Serial interfaces
         interface SplitControl as SerialControl;
@@ -57,6 +64,7 @@ implementation{
     am_addr_t sR_dest;
     message_t sR_m;
     uint8_t sR_len;
+    uint8_t sR_type;
     
     // Variables used for serial sending task
     am_addr_t sS_dest;
@@ -87,7 +95,19 @@ implementation{
      * A task for sending radio messages
      */
     task void sendRadio(){
-        call RadioSend.send(sR_dest, &sR_m, sR_len);
+	
+	switch (sR_type) {
+	  case AM_IP: 
+	    call IPRadioSend.send(sR_dest, &sR_m, sR_len);
+	    break;
+	  case AM_BEACON: 
+	    call BeaconRadioSend.send(sR_dest, &sR_m, sR_len);
+	    break;
+	  case AM_ROUTING_UPDATE: 
+	    call RoutingRadioSend.send(sR_dest, &sR_m, sR_len);
+	    break;
+	  default: call Leds.led2Toggle();
+	}
     }
 
     /** 
@@ -185,7 +205,7 @@ implementation{
       beacons_t* beaconpkt = (beacons_t*)(call Packet.getPayload(&pkt, sizeof(beacons_t)));
   
       beaconpkt->node_id = TOS_NODE_ID;     // Node that created the packet			
-     	call AMPacket.setType(&pkt,AM_BEACON);     
+      sR_type = AM_BEACON;
       // broadcast beacon over the radio
       sR_dest = AM_BROADCAST_ADDR; sR_m = pkt; sR_len = sizeof(beacons_t);
       post sendRadio();
@@ -207,11 +227,11 @@ implementation{
 	r_update_pkt->records[i].node_id = routingTable[i].node_id;
 	r_update_pkt->records[i].metric = routingTable[i].metric;
       }
-		call AMPacket.setType(&pkt,AM_ROUTING_UPDATE);
       // broadcast the routing updates over the radio
       sR_dest = AM_BROADCAST_ADDR;
       sR_m = pkt;
       sR_len = sizeof(routing_update_t);
+      sR_type = AM_ROUTING_UPDATE;
       post sendRadio();
     }  
     
@@ -242,9 +262,10 @@ implementation{
       }
       // If the the address was not found, use by default the broadcast.
       if (!found)
-	//nextHopAddress = AM_BROADCAST_ADDR;
-	///TODO drop packet??
-     call AMPacket.setType(&pkt,AM_IP); 
+	return;
+
+      // else forward it
+      sR_type = AM_IP;
       sR_dest = nextHopAddress; sR_m = *msg; sR_len = len;
       post sendRadio();
     }
@@ -430,81 +451,127 @@ implementation{
      */
     event void RadioControl.stopDone(error_t err){}
 
+
     /** 
-     * Called, when message was sent over the radio.
+     * Called, when the IP message was sent over the radio.
      * 
      * @see tos.interfaces.Send.sendDone
      */
-    ///TODO: do we need sendDone[am_id_t id] or just sendDone?
-    event void RadioSend.sendDone(message_t* m, error_t err){	
+    event void IPRadioSend.sendDone(message_t* m, error_t err){	
         if(err == SUCCESS){
             radioBlink();
         }else{
             failBlink();
         }
     }
-    
+
     /** 
-     * This event is called, when a new message was received over the radio.
+     * Called, when the beacon message was sent over the radio.
+     * 
+     * @see tos.interfaces.Send.sendDone
+     */
+    event void BeaconRadioSend.sendDone(message_t* m, error_t err){	
+        if(err == SUCCESS){
+            radioBlink();
+        }else{
+            failBlink();
+        }
+    }
+
+    /** 
+     * Called, when the routing update message was sent over the radio.
+     * 
+     * @see tos.interfaces.Send.sendDone
+     */
+    event void RoutingRadioSend.sendDone(message_t* m, error_t err){	
+        if(err == SUCCESS){
+            radioBlink();
+        }else{
+            failBlink();
+        }
+    }
+
+    /** 
+     * This event is called, when a new IP message was received over the radio.
      * 
      * @see tos.interfaces.Receive.receive
      */
-    ///TODO: do we need sendDone[am_id_t id] or just sendDone?
-    event message_t* RadioReceive.receive(message_t* m, void* payload, uint8_t len){
-      beacons_t* receivedBeacon;
-      routing_update_t* receivedRoutingUpdate;
-      myPacketHeader *myph;
-      am_addr_t source;
-      uint16_t msgType;
-      
-      // discard if not a valid message
-      if (len != sizeof(beacons_t) && len != sizeof(routing_update_t) && len!= sizeof(myPacketHeader))
-	return m;
-      
-      // get the type of message
-      msgType = call AMPacket.type(m);
-      
-      source = call AMPacket.source(m);
-      switch (msgType) {
-	
-	case AM_BEACON:
-	  receivedBeacon = (beacons_t*) payload;
-	  processBeacon(receivedBeacon, source);
-	  break;
-	
-	case AM_ROUTING_UPDATE:
-	  receivedRoutingUpdate = (routing_update_t*) payload;
-	  processRoutingUpdate(receivedRoutingUpdate, source);
-	  break;
-	
-	case AM_IP:
-	  myph = (myPacketHeader*) payload;
-	  source = myph->sender;
+    event message_t* IPRadioReceive.receive(message_t* m, void* payload, uint8_t len){
 
-	  // Test, whether this message is a duplicate
-	  if(!inQueue(source, myph->seq_no, myph->ord_no)){
-	    // Add this message to the queue of seen messages
-	    addToQueue(source, myph->seq_no, myph->ord_no); 
-		    
-	    // Test if the message is for us
-	    if(myph->destination == TOS_NODE_ID){
-		// Forward it to the serial
-		sS_dest = AM_BROADCAST_ADDR; sS_m = *m; sS_len = len;
-		post sendSerial();
-	    }
-	    else{
-		// Forward it to the appropriate destination
-		forwardPacket(m, len);
-	      }
-	    }
-	  break;
+	myPacketHeader *myph;
+	am_addr_t source;
 	
-	default: call Leds.led2Toggle();
-      }
-      
-      return m;
+	// discard if not a valid message
+	if (len!= sizeof(myPacketHeader) || call AMPacket.type(m) != AM_IP)
+	  return m;
+	
+	myph = (myPacketHeader*) payload;
+	source = myph->sender;
+
+	// Test, whether this message is a duplicate
+	if (!inQueue(source, myph->seq_no, myph->ord_no)) {
+	  // Add this message to the queue of seen messages
+	  addToQueue(source, myph->seq_no, myph->ord_no); 
+		  
+	  // Test if the message is for us
+	  if (myph->destination == TOS_NODE_ID) {
+	    // Forward it to the serial
+	    sS_dest = AM_BROADCAST_ADDR; sS_m = *m; sS_len = len;
+	    post sendSerial();
+	  }
+	  else {
+	    // Forward it to the appropriate destination
+	    forwardPacket(m, len);
+	  }
+	}
+	
+	return m;
     }
     
+
+    /** 
+     * This event is called, when a new beacon message was received over the radio.
+     * 
+     * @see tos.interfaces.Receive.receive
+     */
+    event message_t* BeaconRadioReceive.receive(message_t* m, void* payload, uint8_t len){
+
+	beacons_t* receivedBeacon;
+	am_addr_t source;
+      
+	// discard if not a valid message
+	if (len != sizeof(beacons_t)  || call AMPacket.type(m) != AM_BEACON)
+	  return m;
+	
+	source = call AMPacket.source(m);
+	receivedBeacon = (beacons_t*) payload;
+	processBeacon(receivedBeacon, source);
+	
+	return m;
+    }
+    
+    /** 
+     * This event is called, when a new routing update message was received over the radio.
+     * 
+     * @see tos.interfaces.Receive.receive
+     */
+    event message_t* RoutingRadioReceive.receive(message_t* m, void* payload, uint8_t len){
+
+	routing_update_t* receivedRoutingUpdate;
+	am_addr_t source;
+
+	// discard if not a valid message
+	if (len != sizeof(routing_update_t)  || call AMPacket.type(m) != AM_ROUTING_UPDATE)
+	  return m;
+	
+	source = call AMPacket.source(m);
+	receivedRoutingUpdate = (routing_update_t*) payload;
+	processRoutingUpdate(receivedRoutingUpdate, source);
+	
+	return m;
+    }
+
+
     /**
     * Called when the timer for the beacon expires.
     * When this timer is fired, the mote broadcasts a beacon
