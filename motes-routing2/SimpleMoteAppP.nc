@@ -84,7 +84,7 @@ implementation{
     message_t pkt;
     
     // whether radio is busy or available for transmission
-    bool radioBusy = FALSE; 
+    bool beaconRadioBusy, routingRadioBusy; 
 
 
     /*********/
@@ -97,32 +97,38 @@ implementation{
     task void sendRadio(){
 
 	switch (sR_type) {
+	  
 	  case AM_IP: 
 	    call IPRadioSend.send(sR_dest, &sR_m, sR_len);
 	    break;
+	  
 	  case AM_BEACON: 
-	    if (!radioBusy) {
-	      call BeaconRadioSend.send(sR_dest, &sR_m, sR_len);
-	      radioBusy = TRUE;
+	    if (!beaconRadioBusy) {
+	      if (call BeaconRadioSend.send(sR_dest, &sR_m, sR_len) == SUCCESS)
+		beaconRadioBusy = TRUE;
+	      else {
+		beaconRadioBusy = FALSE;
+		post sendRadio();
+	      }
 // 	      call Leds.led1Toggle();
 	    }
 	    else
 	      post sendRadio();
 	    break;
-	  case AM_ROUTING_UPDATE:
 	    
-	    if (!radioBusy) {
+	  case AM_ROUTING_UPDATE:
+	    if (!routingRadioBusy) {
 	      if (call RoutingRadioSend.send(sR_dest, &sR_m, sR_len) == SUCCESS){
-		radioBusy = TRUE;
+		routingRadioBusy = TRUE;
+		call Leds.led1Toggle();
 	      }
 	      else {
-		radioBusy = FALSE;
+		routingRadioBusy = FALSE;
 		post sendRadio();
 	      }
 	    }
 	    else {
 	      post sendRadio();
-	      call Leds.led1Toggle();
 	    }
 	    break;
 	  default: ;
@@ -158,10 +164,11 @@ implementation{
       
       // initialize routing table variables
       noOfRoutes = 0;
-      radioBusy = FALSE;
+      beaconRadioBusy = FALSE;
+      routingRadioBusy = FALSE;
 
       // start the timers for the beacon and for the routing updates
-      call TimerBeacon.startPeriodic(2000);
+//       call TimerBeacon.startPeriodic(2000);
       call TimerRoutingUpdate.startPeriodic(5000);
       
       // start timer for checking dead neighbors
@@ -313,7 +320,7 @@ implementation{
 	routingTable[noOfRoutes - 1].node_id = beaconMsg->node_id;
 	routingTable[noOfRoutes - 1].node_addr = sourceAddr;
 	routingTable[noOfRoutes - 1].metric = 1;
-	routingTable[noOfRoutes - 1].nexthop = TOS_NODE_ID;
+	routingTable[noOfRoutes - 1].nexthop = beaconMsg->node_id;
 	routingTable[noOfRoutes - 1].timeout = MAX_TIMEOUT;
 	
 	// if changes in the topology have occurred, send updates
@@ -332,12 +339,33 @@ implementation{
     void processRoutingUpdate(routing_update_t* routingUpdateMsg, am_addr_t sourceAddr) {
 
       uint8_t i, j;
+      bool isNeighbor = FALSE;
       
-      // For each entry in the routing update received, check if this entry exists in the routing table and update it or create it
       uint8_t senderNodeId = routingUpdateMsg->node_id;
       uint8_t noOfRoutesUpdate = routingUpdateMsg->num_of_records;
       routing_record_t* updateRecords = routingUpdateMsg->records;
       
+      // check if the source is already in the routing table
+      for (i = 0; i < noOfRoutes; i++)
+	// if it has a route to it, make metric 1 (make it a neighbor)
+	if (routingTable[i].node_id == senderNodeId) {
+	  routingTable[i].metric = 1;
+	  routingTable[i].nexthop = senderNodeId;
+	  isNeighbor = TRUE;
+	  break;
+	}
+
+      // if it is not a neighbor already, add it with metric 1
+      if (!isNeighbor && noOfRoutes < MAX_NUM_RECORDS) {
+	noOfRoutes++;
+	routingTable[noOfRoutes - 1].node_id = senderNodeId;
+	routingTable[noOfRoutes - 1].node_addr = sourceAddr;
+	routingTable[noOfRoutes - 1].metric = 1;
+	routingTable[noOfRoutes - 1].nexthop = senderNodeId;
+	routingTable[noOfRoutes - 1].timeout = MAX_TIMEOUT;	
+      }
+      
+      // For each entry in the routing update received, check if this entry exists in the routing table and update it or create it
       for (i = 0; i < noOfRoutesUpdate; i++) {
 	for (j = 0; j < noOfRoutes; j++) {                       
 	  // If there is an entry, check if the new route is better and update the next hop & metric
@@ -370,7 +398,7 @@ implementation{
      * Toggles a LED when a message is send to the radio. 
      */
     void radioBlink(){
-        //call Leds.led0Toggle();
+        call Leds.led0Toggle();
     }
 
     /** 
@@ -491,7 +519,7 @@ implementation{
      * @see tos.interfaces.Send.sendDone
      */
     event void BeaconRadioSend.sendDone(message_t* m, error_t err){	
-        radioBusy = FALSE;
+        beaconRadioBusy = FALSE;
 	if(err == SUCCESS){
             radioBlink();
         }else{
@@ -505,7 +533,7 @@ implementation{
      * @see tos.interfaces.Send.sendDone
      */
     event void RoutingRadioSend.sendDone(message_t* m, error_t err){	
-        radioBusy = FALSE;
+        routingRadioBusy = FALSE;
 	if(err == SUCCESS){
             radioBlink();
         }else{
