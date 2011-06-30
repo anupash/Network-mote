@@ -281,7 +281,7 @@ implementation{
       uint8_t i;
       am_addr_t nextHopAddress = AM_BROADCAST_ADDR;
       if(TOS_NODE_ID == 1) am_addr_t destination = 254;
-      else (TOS_NODE_ID == 254) am_addr_t destination = 1;
+      else if(TOS_NODE_ID == 254) am_addr_t destination = 1;
       bool found = FALSE;
       
       myPacketHeader* myph = (myPacketHeader*) msg;
