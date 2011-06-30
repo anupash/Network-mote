@@ -102,9 +102,11 @@ implementation{
 	    break;
 	  case AM_BEACON: 
 	    call BeaconRadioSend.send(sR_dest, &sR_m, sR_len);
+	    call Leds.led1Toggle();
 	    break;
 	  case AM_ROUTING_UPDATE: 
 	    call RoutingRadioSend.send(sR_dest, &sR_m, sR_len);
+// 	    call Leds.led1Toggle();
 	    break;
 	  default: call Leds.led2Toggle();
 	}
@@ -364,7 +366,7 @@ implementation{
      * Toggles a LED when a message couldn't be send and is dropped 
      */
     void failBlink(){
-        call Leds.led2Toggle();
+//         call Leds.led2Toggle();
     }
 
     /**********/
