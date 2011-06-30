@@ -294,7 +294,6 @@ implementation{
   	    if (destination == routingTable[i].node_addr) {
 	      nextHopAddress = routingTable[i].nexthop;
 	      found = TRUE;
-			call Leds.led2On();
 	      break;
 	    }
       }
@@ -304,7 +303,6 @@ implementation{
 
       // else forward it
       else{
-		if(destination == 1 )call Leds.led1On();
         sR_type = AM_IP;
         sR_dest = nextHopAddress; sR_m = *msg; sR_len = len;
         post sendRadio();
