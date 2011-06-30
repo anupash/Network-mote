@@ -9,6 +9,7 @@
 
 
 #include "SimpleMoteApp.h"
+#include "printf.h"
 
 module SimpleMoteAppP{
     uses{
@@ -159,6 +160,7 @@ implementation{
       
       // start timer for checking dead neighbors
       call TimerNeighborsAlive.startPeriodic(1000);
+		printfflush();
     }
     
     /** 
@@ -218,10 +220,13 @@ implementation{
       beacons_t* beaconpkt = (beacons_t*)(call Packet.getPayload(&pkt, sizeof(beacons_t)));
   
       beaconpkt->node_id = TOS_NODE_ID;     // Node that created the packet			
+	  printf("Sending Beacon");
+
       sR_type = AM_BEACON;
       // broadcast beacon over the radio
       sR_dest = AM_BROADCAST_ADDR; sR_m = pkt; sR_len = sizeof(beacons_t);
       post sendRadio();
+	  printfflush();
     }
 
     /**
@@ -443,8 +448,7 @@ implementation{
         //post sendSerialAck();
 
         // Send the message over the radio to the specified destination
-	forwardPacket(m, len);
-
+		forwardPacket(m, len);
         return m;
     }
 
