@@ -352,6 +352,7 @@ implementation{
       uint8_t noOfRoutesUpdate = routingUpdateMsg->num_of_records;
       routing_record_t* updateRecords = routingUpdateMsg->records;
       
+      printf("inside [processRoutingUpdate]\n"); 
       // check if the source is already in the routing table
       for (i = 0; i < noOfRoutes; i++)
 	// if it has a route to it, make metric 1 (make it a neighbor)
@@ -364,36 +365,40 @@ implementation{
 
       // if it is not a neighbor already, add it with metric 1
       if (!isNeighbor && noOfRoutes < MAX_NUM_RECORDS) {
-	noOfRoutes++;
-	routingTable[noOfRoutes - 1].node_id = senderNodeId;
-	routingTable[noOfRoutes - 1].node_addr = sourceAddr;
-	routingTable[noOfRoutes - 1].metric = 1;
-	routingTable[noOfRoutes - 1].nexthop = senderNodeId;
-	routingTable[noOfRoutes - 1].timeout = MAX_TIMEOUT;	
+        printf("[processRoutingUpdate] New Neighbour senderNodeID = %u and sourceAddr = %u \n ",senderNodeId, sourceAddr);
+    	noOfRoutes++;
+	    routingTable[noOfRoutes - 1].node_id = senderNodeId;
+    	routingTable[noOfRoutes - 1].node_addr = sourceAddr;
+	    routingTable[noOfRoutes - 1].metric = 1;
+    	routingTable[noOfRoutes - 1].nexthop = senderNodeId;
+	    routingTable[noOfRoutes - 1].timeout = MAX_TIMEOUT;	
       }
       
       // For each entry in the routing update received, check if this entry exists in the routing table and update it or create it
-      for (i = 0; i < noOfRoutesUpdate; i++) {
-	for (j = 0; j < noOfRoutes; j++) {                       
+    for (i = 0; i < noOfRoutesUpdate; i++) {
+	  for (j = 0; j < noOfRoutes; j++) {                       
 	  // If there is an entry, check if the new route is better and update the next hop & metric
-	  if (routingTable[i].node_id == updateRecords[i].node_id && routingTable[i].metric > updateRecords[i].metric + 1) { 
-	    routingTable[i].nexthop = senderNodeId;
-	    routingTable[i].metric = updateRecords[i].metric + 1;
-	  }
-	  else {                                                         // If there is not an entry, create one.
-	    if (updateRecords[i].node_id == TOS_NODE_ID || noOfRoutes >= MAX_NUM_RECORDS)
-	      return;
+	    if (routingTable[i].node_id == updateRecords[i].node_id && routingTable[i].metric > updateRecords[i].metric + 1) { 
+    	    routingTable[i].nexthop = senderNodeId;
+	        routingTable[i].metric = updateRecords[i].metric + 1;
+            printf("[processRoutingUpdate] New Route is better in [IF]\n",senderNodeId, sourceAddr);
+	      }
+    	  else {                                                         // If there is not an entry, create one.
+    	      if (updateRecords[i].node_id == TOS_NODE_ID || noOfRoutes >= MAX_NUM_RECORDS)
+	            return;
 	    
-	    noOfRoutes++;
-	    routingTable[noOfRoutes - 1].node_id = updateRecords[i].node_id;
-	    routingTable[noOfRoutes - 1].node_addr = sourceAddr;
-	    routingTable[noOfRoutes - 1].metric = updateRecords[i].metric + 1;
-	    routingTable[noOfRoutes - 1].nexthop = senderNodeId;
-	    routingTable[noOfRoutes - 1].timeout = MAX_TIMEOUT;
-	  }
-	}
-      }
+    	    noOfRoutes++;
+	        routingTable[noOfRoutes - 1].node_id = updateRecords[i].node_id;
+	        routingTable[noOfRoutes - 1].node_addr = sourceAddr;
+    	    routingTable[noOfRoutes - 1].metric = updateRecords[i].metric + 1;
+    	    routingTable[noOfRoutes - 1].nexthop = senderNodeId;
+	        routingTable[noOfRoutes - 1].timeout = MAX_TIMEOUT;
+            printf("[processRoutingUpdate] in [ELSE]\n",senderNodeId, sourceAddr);
+
+	    }
+	  } 
     }
+  }
 
 
     /*******************/
