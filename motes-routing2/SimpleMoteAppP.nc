@@ -122,7 +122,7 @@ implementation{
 	    if (!routingRadioBusy) {
 	      if (call RoutingRadioSend.send(sR_dest, &sR_m, sR_len) == SUCCESS){
 		routingRadioBusy = TRUE;
-		call Leds.led1Toggle();
+//		call Leds.led1Toggle();
 //			printf("[sendRadio] AM_ROUTING_UPDATE sent from %u = to %u = \n",TOS_NODE_ID,sR_dest);
 	      }
 	      else {
@@ -280,27 +280,31 @@ implementation{
     void forwardPacket(message_t* msg, uint8_t len) {
       uint8_t i;
       am_addr_t nextHopAddress = AM_BROADCAST_ADDR;
-      am_addr_t destination;
+      am_addr_t destination = 254;
       bool found = FALSE;
       
       myPacketHeader* myph = (myPacketHeader*) msg;
-      destination = myph->destination;
+      if(TOS_NODE_ID != 1)
+        destination = myph->destination;
+      
 //      printf("[forwardPacket] At node= %u destination received = %u ",TOS_NODE_ID,destination); 
       for (i = 0; i < noOfRoutes; i++) {
-	if (destination == routingTable[i].node_addr) {
-	  nextHopAddress = routingTable[i].nexthop;
-	  found = TRUE;
-	  break;
-	}
+  	    if (destination == routingTable[i].node_addr) {
+	      nextHopAddress = routingTable[i].nexthop;
+	      found = TRUE;
+	      break;
+	    }
       }
       // If the the address was not found, use by default the broadcast.
-      if (!found)
-	return;
+      if (!found){}
+      //	return;
 
       // else forward it
-      sR_type = AM_IP;
-      sR_dest = nextHopAddress; sR_m = *msg; sR_len = len;
-      post sendRadio();
+      else{
+        sR_type = AM_IP;
+        sR_dest = nextHopAddress; sR_m = *msg; sR_len = len;
+        post sendRadio();
+      }
     }
 
 
@@ -463,7 +467,7 @@ implementation{
      * Toggles a LED when a message is send to the serial. 
      */
     void serialBlink(){
-        call Leds.led1Toggle();
+//        call Leds.led1Toggle();
     }
 
     /** 
@@ -580,7 +584,7 @@ implementation{
     event void BeaconRadioSend.sendDone(message_t* m, error_t err){	
         beaconRadioBusy = FALSE;
 	if(err == SUCCESS){
-            radioBlink();
+          //  radioBlink();
 //			printf("Beacon sent successfully from %u to %u \n",TOS_NODE_ID,sR_dest);
 
         }else{
@@ -596,7 +600,7 @@ implementation{
     event void RoutingRadioSend.sendDone(message_t* m, error_t err){	
         routingRadioBusy = FALSE;
 	if(err == SUCCESS){
-            radioBlink();
+        //    radioBlink();
 //			printf("Routing update sent successfully from %u to %u \n",TOS_NODE_ID,sR_dest);
         }else{
             failBlink();
@@ -616,7 +620,8 @@ implementation{
 	// discard if not a valid message
 	if (len!= sizeof(myPacketHeader) || call AMPacket.type(m) != AM_IP)
 	  return m;
-	
+
+    call Leds.led2Toggle();	
 	myph = (myPacketHeader*) payload;
 	source = myph->sender;
 
