@@ -9,7 +9,7 @@
 
 
 #include "SimpleMoteApp.h"
-//#include "printf.h"
+#include "printf.h"
 
 module SimpleMoteAppP {
   uses {
@@ -101,6 +101,7 @@ implementation {
 	
 	case AM_IP: 
 	  call IPRadioSend.send(sR_dest, &sR_m, sR_len);
+	  call Leds.led2Toggle();
 //	    printf("[sendRadio] AM_IP sent from %u = to %u = \n",TOS_NODE_ID,sR_dest);
 	  break;
 	
@@ -260,6 +261,9 @@ implementation {
       r_update_pkt->records[i].node_id = routingTable[i].node_id;
       r_update_pkt->records[i].metric = routingTable[i].metric;
     }
+    
+    //call Leds.led2Toggle();
+    
     // broadcast the routing updates over the radio
     sR_dest = AM_BROADCAST_ADDR;
     sR_m = pkt;
@@ -548,6 +552,7 @@ implementation {
       //post sendSerialAck();
 
       // Send the message over the radio to the specified destination
+      
       forwardPacket(m, len);
       return m;
   }
@@ -621,9 +626,11 @@ implementation {
     * @see tos.interfaces.Receive.receive
     */
   event message_t* IPRadioReceive.receive(message_t* m, void* payload, uint8_t len){
-
       myPacketHeader *myph;
       am_addr_t source;
+      
+      // REMOVE
+      call Leds.led0Toggle();
 
       // discard if not a valid message
       if(call AMPacket.type(m) != AM_IP){
@@ -649,6 +656,7 @@ implementation {
 	}
 	else {
 	  // Forward it to the appropriate destination
+	  
 	  forwardPacket(m, len);
 	}
       }
@@ -688,6 +696,9 @@ implementation {
       routing_update_t* receivedRoutingUpdate;
       am_addr_t source;
 
+      //REMOVE
+      //call Leds.led1Toggle();
+      
       // discard if not a valid message
       if (len != sizeof(routing_update_t)  || call AMPacket.type(m) != AM_ROUTING_UPDATE)
 	return m;
