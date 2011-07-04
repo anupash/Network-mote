@@ -101,7 +101,7 @@ implementation {
 	
 	case AM_IP: 
 	  call IPRadioSend.send(sR_dest, &sR_m, sR_len);
-	  call Leds.led2Toggle();
+	  call Leds.led1Toggle();
 //	    printf("[sendRadio] AM_IP sent from %u = to %u = \n",TOS_NODE_ID,sR_dest);
 	  break;
 	
@@ -123,7 +123,6 @@ implementation {
 	  if (!routingRadioBusy) {
 	    if (call RoutingRadioSend.send(sR_dest, &sR_m, sR_len) == SUCCESS){
 	      routingRadioBusy = TRUE;
-//		call Leds.led1Toggle();
 //		printf("[sendRadio] AM_ROUTING_UPDATE sent from %u = to %u = \n",TOS_NODE_ID,sR_dest);
 	    }
 	    else {
@@ -628,9 +627,6 @@ implementation {
   event message_t* IPRadioReceive.receive(message_t* m, void* payload, uint8_t len){
       myPacketHeader *myph;
       am_addr_t source;
-      
-      // REMOVE
-      call Leds.led0Toggle();
 
       // discard if not a valid message
       if(call AMPacket.type(m) != AM_IP){
@@ -638,6 +634,9 @@ implementation {
       }/*else if (len!= sizeof(myPacketHeader)){
 	      call Leds.led2Toggle();	return m;
       }*/
+      
+      // REMOVE
+      call Leds.led0Toggle();
 
       myph = (myPacketHeader*) payload;
       source = myph->sender;
@@ -696,12 +695,13 @@ implementation {
       routing_update_t* receivedRoutingUpdate;
       am_addr_t source;
 
-      //REMOVE
-      //call Leds.led1Toggle();
       
       // discard if not a valid message
       if (len != sizeof(routing_update_t)  || call AMPacket.type(m) != AM_ROUTING_UPDATE)
 	return m;
+      
+      //REMOVE
+      call Leds.led2Toggle();
       
       source = call AMPacket.source(m);
 //	printf("[RoutingRadioReceive.receive] from source=%u \n",source);
