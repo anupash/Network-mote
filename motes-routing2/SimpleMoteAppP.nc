@@ -7,7 +7,6 @@
  * 
  */
 
-
 #include "SimpleMoteApp.h"
 #include "printf.h"
 
@@ -92,16 +91,12 @@ implementation {
   * A task for sending radio messages
   */
   task void sendRadio(){
-    //myPacketHeader* myph;
       switch (sR_type) {
 	
 	case AM_IP: 
-	  //myph = (myPacketHeader*) &sR_m;
-	  //if(myph->destination == 254) {
-	  //  call Leds.led1Toggle();
-	  //}
 	  call IPRadioSend.send(sR_dest, &sR_m, sR_len);
-	  //call Leds.led1Toggle();
+// 	  //DEBUG
+	  call Leds.led1Toggle();
 //	    printf("[sendRadio] AM_IP sent from %u = to %u = \n",TOS_NODE_ID,sR_dest);
 	  break;
 	
@@ -136,7 +131,6 @@ implementation {
   * An acknowledgement is just of an empty Active Message.
   */
   task void sendSerialAck(){
-
       //TODO: Does that work, or does TinyOS give us an error for the 0?
       call SerialSend.send(AM_BROADCAST_ADDR, &ack_msg, 0);
   }
@@ -228,8 +222,6 @@ implementation {
       r_update_pkt->records[i].metric = routingTable[i].metric;
     }
     
-    //call Leds.led2Toggle();
-    
     // broadcast the routing updates over the radio
     sR_dest = AM_BROADCAST_ADDR;
     sR_m = pkt;
@@ -249,14 +241,18 @@ implementation {
   */
   void forwardPacket(message_t* msg, uint8_t len) {
     uint8_t i;
-    am_addr_t nextHopAddress = AM_BROADCAST_ADDR;
+    am_addr_t nextHopAddress;// = AM_BROADCAST_ADDR;
     bool found = FALSE;
-	  
     myPacketHeader* myph = (myPacketHeader*) msg;
 
+    // If this mote is a node attatched to a PC, set the correct destination.
     if(TOS_NODE_ID == 1) myph->destination = 254;
     else if (TOS_NODE_ID == 254 ) myph->destination = 1;
-
+    
+    //PROBLEM! Here inside myph->destination or ->source there is 65535. So it will never find the route...
+    //if (myph->destination == 254)
+      //call Leds.led1Toggle();
+    
 //    printf("[forwardPacket] At node= %u destination received = %u ",TOS_NODE_ID,destination); 
     for (i = 0; i < noOfRoutes; i++) {
       if (myph->destination == routingTable[i].node_id) {
@@ -267,7 +263,7 @@ implementation {
     }
     
     if (!found) {       // If the the address was not found, use by default the broadcast.
-    	
+      call Leds.led1Toggle();
     }
     else {     // else forward it
       sR_type = AM_IP;
@@ -293,11 +289,13 @@ implementation {
     uint8_t noOfRoutesUpdate = routingUpdateMsg->num_of_records;
     routing_record_t* updateRecords = routingUpdateMsg->records;
     
+    // Only for testing purposes
     if((TOS_NODE_ID == 1 && senderNodeId == 254)||(TOS_NODE_ID == 254 && senderNodeId == 1))
       return;
     
 //      printf("inside [processRoutingUpdate]\n"); 
     // check if the source is already in the routing table
+      
     for (i = 0; i < noOfRoutes; i++) {
       // if it has a route to it, make metric 1 (make it a neighbor)
       if (routingTable[i].node_id == senderNodeId) {
@@ -368,36 +366,6 @@ implementation {
       }
     }
   }
-
-/*
-  for (i = 0; i < noOfRoutesUpdate; i++) {
-//      printf("[processRoutingUpdate] inside first [FOR] i = %u loop and noOfRoutes = %u\n",i,noOfRoutes);
-	for (j = 0; j < noOfRoutes; j++) {                       
-	// If there is an entry, check if the new route is better and update the next hop & metric
-	  if (routingTable[i].node_id == updateRecords[i].node_id && routingTable[i].metric > updateRecords[i].metric + 1) { 
-	  routingTable[i].nexthop = senderNodeId;
-	      routingTable[i].metric = updateRecords[i].metric + 1;
-	  routingTable[i].timeout = MAX_TIMEOUT;   // addeed because timeout timer has to be reset everytime a new update comes
-//            printf("[processRoutingUpdate] New Route is better in [IF] sender = %u source = %u \n",senderNodeId, sourceAddr);
-	    }
-	else {                                                         // If there is not an entry, create one.
-	    if (updateRecords[i].node_id == TOS_NODE_ID || noOfRoutes >= MAX_NUM_RECORDS){
-//                printf("[processRoutingUpdate] in [ELSE] -> [IF]  and noOfRoutes = %u and updateRecords[i].node_id = %u \n",noOfRoutes,updateRecords[i].node_id);
-		  return;
-	    }
-	  
-	  noOfRoutes++;
-	      routingTable[noOfRoutes - 1].node_id = updateRecords[i].node_id;
-	      routingTable[noOfRoutes - 1].node_addr = sourceAddr;
-	  routingTable[noOfRoutes - 1].metric = updateRecords[i].metric + 1;
-	  routingTable[noOfRoutes - 1].nexthop = senderNodeId;
-	      routingTable[noOfRoutes - 1].timeout = MAX_TIMEOUT;
-//            printf("[processRoutingUpdate] in [ELSE]\n");
-
-	  }
-	} 
-  }
-*/
 
   /*******************/
   /* Debug functions */
@@ -516,11 +484,10 @@ implementation {
     */
   event void IPRadioSend.sendDone(message_t* m, error_t err){	
       if(err == SUCCESS){
-	  radioBlink();
-//			printf("IP Packet sent successfully from %u to %u \n",TOS_NODE_ID,sR_dest);
-
+	radioBlink();
+//	printf("IP Packet sent successfully from %u to %u \n",TOS_NODE_ID,sR_dest);
       }else{
-	  failBlink();
+	failBlink();
       }
   }
 
@@ -532,10 +499,10 @@ implementation {
   event void RoutingRadioSend.sendDone(message_t* m, error_t err){	
       routingRadioBusy = FALSE;
       if(err == SUCCESS){
-      //    radioBlink();
-//			printf("Routing update sent successfully from %u to %u \n",TOS_NODE_ID,sR_dest);
+	radioBlink();
+	printf("Routing update sent successfully from %u to %u \n",TOS_NODE_ID,sR_dest);
       } else {
-	  failBlink();
+	failBlink();
       }
   }
 
@@ -548,15 +515,13 @@ implementation {
       myPacketHeader *myph;
       am_addr_t source;
 
-      // REMOVE
+      // DEBUG
       call Leds.led0Toggle();
       
-      // discard if not a valid message
+      // Discard if not a valid message
       if(call AMPacket.type(m) != AM_IP){
 	return m;
-      }/*else if (len!= sizeof(myPacketHeader)){
-	      call Leds.led2Toggle();	return m;
-      }*/
+      }
 
       myph = (myPacketHeader*) payload;
       source = myph->sender;
@@ -575,11 +540,9 @@ implementation {
 	}
 	else {
 	  // Forward it to the appropriate destination
-	  
 	  forwardPacket(m, len);
 	}
       }
-      
       return m;
   }
   
@@ -589,16 +552,14 @@ implementation {
   * @see tos.interfaces.Receive.receive
   */
   event message_t* RoutingRadioReceive.receive(message_t* m, void* payload, uint8_t len){
-
       routing_update_t* receivedRoutingUpdate;
       am_addr_t source;
 
-      
-      // discard if not a valid message
+      // Discard if not a valid message
       if (len != sizeof(routing_update_t)  || call AMPacket.type(m) != AM_ROUTING_UPDATE)
 	return m;
       
-      //REMOVE
+      //DEBUG
       call Leds.led2Toggle();
       
       source = call AMPacket.source(m);
@@ -633,14 +594,13 @@ implementation {
     
     for (i = 0; i < noOfRoutes; i++) {
       routingTable[i].timeout--;
-  // if the timeout becomes 0, remove the route from the routing table
+      // if the timeout becomes 0, remove the route from the routing table
       if (routingTable[i].timeout == 0) {
 	for (j = i; j < noOfRoutes - 1; j++) {
 	  routingTable[j] = routingTable[j + 1];
 	}
 	noOfRoutes--;
 //            printf("[TimerNeighborsAlive.fired()] One Neighbour removed due to timeout\n");
-	
       }
     }
   }

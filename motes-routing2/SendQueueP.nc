@@ -173,7 +173,9 @@ implementation{
         for (; i < 8; i++) {
           ((uint8_t*)toSend)[i+8] = ((uint8_t*)toSend)[i];
         }*/
-
+	myPacketHeader *myph;
+	myph = (myPacketHeader*) toSend;
+	
         if (call LowSend.send(address, toSend, mlen) != SUCCESS) {
             post sendEnqueued();
         }
