@@ -62,7 +62,6 @@ typedef nx_struct myPacketHeader {
  * General definitions.
  */
 enum {
-  BEACON_TIMER_MILLI = 5120,
   MAX_NUM_RECORDS = 10,
   MAX_TIMEOUT = 15
 };
@@ -71,7 +70,6 @@ enum {
  * Types of messages for the routing module
  */
 enum {
-  AM_BEACON = 10,
   AM_ROUTING_UPDATE = 11,
   AM_IP = 12
 };
@@ -94,10 +92,6 @@ typedef nx_struct routing_update {
     nx_uint8_t num_of_records;
     routing_record_t records[MAX_NUM_RECORDS];
 } routing_update_t; 
-
-typedef nx_struct beacons {
-    nx_uint8_t node_id;
-} beacons_t; 
 
 
 typedef nx_struct ack {

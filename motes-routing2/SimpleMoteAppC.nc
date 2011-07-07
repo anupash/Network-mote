@@ -34,12 +34,6 @@ implementation{
     IPRadioQueue.AMPacket -> Radio;
     IPRadioQueue.Packet -> Radio;
 
-    // Radio components - Beacon packets
-//     components new SendQueueC(RADIO_QUEUE_SIZE, sizeof(message_t)) as BeaconRadioQueue;
-//     BeaconRadioQueue.LowSend -> Radio.AMSend[AM_BEACON];
-//     BeaconRadioQueue.AMPacket -> Radio;
-//     BeaconRadioQueue.Packet -> Radio;
-
     // Radio components - IP packets
 /*    components new SendQueueC(RADIO_QUEUE_SIZE, sizeof(message_t)) as RoutingRadioQueue;
     RoutingRadioQueue.LowSend -> Radio.AMSend[AM_ROUTING_UPDATE];
@@ -50,9 +44,6 @@ implementation{
     
     SimpleMoteAppP.IPRadioReceive -> Radio.Receive[AM_IP];
     SimpleMoteAppP.IPRadioSend -> IPRadioQueue;
-    
-    SimpleMoteAppP.BeaconRadioReceive -> Radio.Receive[AM_BEACON];
-    SimpleMoteAppP.BeaconRadioSend -> Radio.AMSend[AM_BEACON];
 
     SimpleMoteAppP.RoutingRadioReceive -> Radio.Receive[AM_ROUTING_UPDATE];
     SimpleMoteAppP.RoutingRadioSend -> Radio.AMSend[AM_ROUTING_UPDATE];
@@ -73,10 +64,8 @@ implementation{
     SimpleMoteAppP.AMPacket -> Radio;
     
     // The timer components
-    components new TimerMilliC() as TimerMilliBeacon;
     components new TimerMilliC() as TimerMilliRoutingUpdate;
     components new TimerMilliC() as TimerMilliNeighborsAlive;
-    SimpleMoteAppP.TimerBeacon -> TimerMilliBeacon;
     SimpleMoteAppP.TimerRoutingUpdate -> TimerMilliRoutingUpdate; 
     SimpleMoteAppP.TimerNeighborsAlive -> TimerMilliNeighborsAlive;
     

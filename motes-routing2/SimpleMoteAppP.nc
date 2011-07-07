@@ -22,9 +22,6 @@ module SimpleMoteAppP {
     // Send and receive interfaces for the IP packets
     interface AMSend as IPRadioSend;
     interface Receive as IPRadioReceive;
-    // Send and receive interfaces for the beacon packets
-    interface AMSend as BeaconRadioSend;
-    interface Receive as BeaconRadioReceive;
     // Send and receive interfaces for the routing updates
     interface AMSend as RoutingRadioSend;
     interface Receive as RoutingRadioReceive;
@@ -39,7 +36,6 @@ module SimpleMoteAppP {
     interface AMPacket;
 
     // Routing interfaces
-    interface Timer<TMilli> as TimerBeacon;
     interface Timer<TMilli> as TimerRoutingUpdate;
     interface Timer<TMilli> as TimerNeighborsAlive;
   }
@@ -85,7 +81,7 @@ implementation {
   message_t pkt;
   
   // whether radio is busy or available for transmission
-  bool beaconRadioBusy, routingRadioBusy; 
+  bool routingRadioBusy; 
 
 
   /*********/
@@ -96,29 +92,19 @@ implementation {
   * A task for sending radio messages
   */
   task void sendRadio(){
-
+    //myPacketHeader* myph;
       switch (sR_type) {
 	
 	case AM_IP: 
+	  //myph = (myPacketHeader*) &sR_m;
+	  //if(myph->destination == 254) {
+	  //  call Leds.led1Toggle();
+	  //}
 	  call IPRadioSend.send(sR_dest, &sR_m, sR_len);
-	  call Leds.led1Toggle();
+	  //call Leds.led1Toggle();
 //	    printf("[sendRadio] AM_IP sent from %u = to %u = \n",TOS_NODE_ID,sR_dest);
 	  break;
 	
-	case AM_BEACON: 
-	  if (!beaconRadioBusy) {
-	    if (call BeaconRadioSend.send(sR_dest, &sR_m, sR_len) == SUCCESS)
-	      beaconRadioBusy = TRUE;
-	    else {
-	      beaconRadioBusy = FALSE;
-	      post sendRadio();
-	    }
-// 	      call Leds.led1Toggle();
-	  }
-	  else
-	    post sendRadio();
-	  break;
-	  
 	case AM_ROUTING_UPDATE:
 	  if (!routingRadioBusy) {
 	    if (call RoutingRadioSend.send(sR_dest, &sR_m, sR_len) == SUCCESS){
@@ -167,11 +153,9 @@ implementation {
     
     // initialize routing table variables
     noOfRoutes = 0;
-    beaconRadioBusy = FALSE;
     routingRadioBusy = FALSE;
 
-    // start the timers for the beacon and for the routing updates
-//    call TimerBeacon.startPeriodic(2000);
+    // start the timer for the routing updates
     call TimerRoutingUpdate.startPeriodic(5000);
     
     // start timer for checking dead neighbors
@@ -228,23 +212,6 @@ implementation {
       }
   }
 
-
- /**
-  * Function for broadcasting a beacon
-  */
-  void sendBeacon() {
-    beacons_t* beaconpkt = (beacons_t*)(call Packet.getPayload(&pkt, sizeof(beacons_t)));
-
-    beaconpkt->node_id = TOS_NODE_ID;     // Node that created the packet			
-//    printf("Sending Beacon");
-
-    sR_type = AM_BEACON;
-    // broadcast beacon over the radio
-    sR_dest = AM_BROADCAST_ADDR; sR_m = pkt; sR_len = sizeof(beacons_t);
-    post sendRadio();
-//    printfflush();
-  }
-
  /**
   * Functions for sending the routing updates to the neighbors
   */
@@ -283,26 +250,24 @@ implementation {
   void forwardPacket(message_t* msg, uint8_t len) {
     uint8_t i;
     am_addr_t nextHopAddress = AM_BROADCAST_ADDR;
-    am_addr_t destination;
     bool found = FALSE;
 	  
     myPacketHeader* myph = (myPacketHeader*) msg;
 
-    if(TOS_NODE_ID == 1) destination = 254;
-    else if (TOS_NODE_ID == 254 ) destination = 1;
-    else destination = myph->destination;
+    if(TOS_NODE_ID == 1) myph->destination = 254;
+    else if (TOS_NODE_ID == 254 ) myph->destination = 1;
 
 //    printf("[forwardPacket] At node= %u destination received = %u ",TOS_NODE_ID,destination); 
     for (i = 0; i < noOfRoutes; i++) {
-	  if (destination == routingTable[i].node_addr) {
-	    nextHopAddress = routingTable[i].nexthop;
-	    found = TRUE;
-	    break;
-	  }
+      if (myph->destination == routingTable[i].node_id) {
+	nextHopAddress = routingTable[i].nexthop;
+	found = TRUE;
+	break;
+      }
     }
     
     if (!found) {       // If the the address was not found, use by default the broadcast.
-    //	return;
+    	
     }
     else {     // else forward it
       sR_type = AM_IP;
@@ -310,39 +275,6 @@ implementation {
       post sendRadio();
     }
   }
-
-
- /**
-  * Process the information received in a beacon (add a new neighbor or confirm existing ones)
-  * 
-  * @param beaconMsg the beacon message received
-  * @param sourceAddr the address if the node sending the beacon
-  * 
-  */
-  void processBeacon(beacons_t* beaconMsg, am_addr_t sourceAddr) {
-    bool isAlreadyNeighbor = FALSE;
-    uint8_t i;
-    
-    for (i = 0; i < noOfRoutes; i++)
-      if (routingTable[i].node_id == beaconMsg->node_id) {           // if a route already exists, reset the timeout
-	routingTable[i].timeout = MAX_TIMEOUT;
-	isAlreadyNeighbor = TRUE;
-	break;
-      }
-      
-    if (!isAlreadyNeighbor && noOfRoutes < MAX_NUM_RECORDS) {        // else, add a new neighbor to the routing table
-      noOfRoutes++;
-      routingTable[noOfRoutes - 1].node_id = beaconMsg->node_id;
-      routingTable[noOfRoutes - 1].node_addr = sourceAddr;
-      routingTable[noOfRoutes - 1].metric = 1;
-      routingTable[noOfRoutes - 1].nexthop = beaconMsg->node_id;
-      routingTable[noOfRoutes - 1].timeout = MAX_TIMEOUT;
-      
-      // if changes in the topology have occurred, send updates
-      sendRoutingUpdate();
-    }
-  }
-
 
  /**
   * Process the information received in a routing update
@@ -354,12 +286,15 @@ implementation {
   void processRoutingUpdate(routing_update_t* routingUpdateMsg, am_addr_t sourceAddr) {
 
     uint8_t i, j;
-    int idx=-1;
+    int idx;
     bool isNeighbor = FALSE;
     
     uint8_t senderNodeId = routingUpdateMsg->node_id;
     uint8_t noOfRoutesUpdate = routingUpdateMsg->num_of_records;
     routing_record_t* updateRecords = routingUpdateMsg->records;
+    
+    if((TOS_NODE_ID == 1 && senderNodeId == 254)||(TOS_NODE_ID == 254 && senderNodeId == 1))
+      return;
     
 //      printf("inside [processRoutingUpdate]\n"); 
     // check if the source is already in the routing table
@@ -387,6 +322,7 @@ implementation {
     
     // For each entry in the routing update received, check if this entry exists in the routing table and update it or create it
     for (i = 0; i < noOfRoutesUpdate; i++) {
+      idx = -1;
       for (j = 0; j < noOfRoutes; j++) {                       
 	// If there is an entry, check if the new route is better and update the next hop & metric
 	if (routingTable[j].node_id == updateRecords[i].node_id)
@@ -472,7 +408,7 @@ implementation {
     * Toggles a LED when a message is send to the radio. 
     */
   void radioBlink(){
-//        call Leds.led0Toggle();
+        //call Leds.led0Toggle();
   }
 
    /** 
@@ -589,22 +525,6 @@ implementation {
   }
 
    /** 
-    * Called, when the beacon message was sent over the radio.
-    * 
-    * @see tos.interfaces.Send.sendDone
-    */
-  event void BeaconRadioSend.sendDone(message_t* m, error_t err){	
-      beaconRadioBusy = FALSE;
-      if(err == SUCCESS){
-	//  radioBlink();
-//			printf("Beacon sent successfully from %u to %u \n",TOS_NODE_ID,sR_dest);
-
-      } else {
-	  failBlink();
-      }
-  }
-
-   /** 
     * Called, when the routing update message was sent over the radio.
     * 
     * @see tos.interfaces.Send.sendDone
@@ -628,15 +548,15 @@ implementation {
       myPacketHeader *myph;
       am_addr_t source;
 
+      // REMOVE
+      call Leds.led0Toggle();
+      
       // discard if not a valid message
       if(call AMPacket.type(m) != AM_IP){
 	return m;
       }/*else if (len!= sizeof(myPacketHeader)){
 	      call Leds.led2Toggle();	return m;
       }*/
-      
-      // REMOVE
-      call Leds.led0Toggle();
 
       myph = (myPacketHeader*) payload;
       source = myph->sender;
@@ -659,28 +579,6 @@ implementation {
 	  forwardPacket(m, len);
 	}
       }
-      
-      return m;
-  }
-  
-
-   /** 
-    * This event is called, when a new beacon message was received over the radio.
-    * 
-    * @see tos.interfaces.Receive.receive
-    */
-  event message_t* BeaconRadioReceive.receive(message_t* m, void* payload, uint8_t len){
-
-      beacons_t* receivedBeacon;
-      am_addr_t source;
-      
-      // discard if not a valid message
-      if (len != sizeof(beacons_t)  || call AMPacket.type(m) != AM_BEACON)
-	return m;
-      
-      source = call AMPacket.source(m);
-      receivedBeacon = (beacons_t*) payload;
-      processBeacon(receivedBeacon, source);
       
       return m;
   }
@@ -709,17 +607,6 @@ implementation {
       processRoutingUpdate(receivedRoutingUpdate, source);
       
       return m;
-  }
-
-
- /**
-  * Called when the timer for the beacon expires.
-  * When this timer is fired, the mote broadcasts a beacon
-  * 
-  * @see tos.interfaces.Timer.fired
-  */
-  event void TimerBeacon.fired() {
-    sendBeacon();
   }
   
  /**
