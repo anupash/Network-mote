@@ -261,11 +261,18 @@ implementation {
 	break;
       }
     }
+  
+    /*FOR TESTING PURPOSSES ONLY!*/
+    if(myph->destination == 65535) {
+      nextHopAddress = AM_BROADCAST_ADDR;
+      found = TRUE;
+    }
     
     if (!found) {       // If the the address was not found, use by default the broadcast.
-      call Leds.led1Toggle();
+      
     }
     else {     // else forward it
+
       sR_type = AM_IP;
       sR_dest = nextHopAddress; sR_m = *msg; sR_len = len;
       post sendRadio();
