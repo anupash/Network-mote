@@ -8,7 +8,7 @@
  */
 
 #include "SimpleMoteApp.h"
-#include "printf.h"
+//#include "printf.h"
 
 module SimpleMoteAppP {
   uses {
@@ -266,6 +266,9 @@ implementation {
     if(myph->destination == 65535) {
       nextHopAddress = AM_BROADCAST_ADDR;
       found = TRUE;
+     call Leds.led2Toggle();
+
+
     }
     
     if (!found) {       // If the the address was not found, use by default the broadcast.
@@ -383,7 +386,7 @@ implementation {
     * Toggles a LED when a message is send to the radio. 
     */
   void radioBlink(){
-        //call Leds.led0Toggle();
+        call Leds.led0Toggle();
   }
 
    /** 
@@ -507,7 +510,7 @@ implementation {
       routingRadioBusy = FALSE;
       if(err == SUCCESS){
 	radioBlink();
-	printf("Routing update sent successfully from %u to %u \n",TOS_NODE_ID,sR_dest);
+//	printf("Routing update sent successfully from %u to %u \n",TOS_NODE_ID,sR_dest);
       } else {
 	failBlink();
       }
@@ -567,7 +570,7 @@ implementation {
 	return m;
       
       //DEBUG
-      call Leds.led2Toggle();
+//      call Leds.led2Toggle();
       
       source = call AMPacket.source(m);
 //	printf("[RoutingRadioReceive.receive] from source=%u \n",source);
