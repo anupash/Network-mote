@@ -96,7 +96,7 @@ implementation {
 	case AM_IP: 
 	  call IPRadioSend.send(sR_dest, &sR_m, sR_len);
 // 	  //DEBUG
-	  call Leds.led1Toggle();
+//	  call Leds.led1Toggle();
 //	    printf("[sendRadio] AM_IP sent from %u = to %u = \n",TOS_NODE_ID,sR_dest);
 	  break;
 	
@@ -239,43 +239,43 @@ implementation {
   * @param len the length of the message to be sent
   * 
   */
-  void forwardPacket(message_t* msg, uint8_t len) {
+  void forwardPacket(message_t* msg, myPacketHeader* myph, uint8_t len) {
     uint8_t i;
     am_addr_t nextHopAddress;// = AM_BROADCAST_ADDR;
     bool found = FALSE;
-    myPacketHeader* myph = (myPacketHeader*) msg;
+//    myPacketHeader* myph = (myPacketHeader*) msg;
 
     // If this mote is a node attatched to a PC, set the correct destination.
     if(TOS_NODE_ID == 1) myph->destination = 254;
     else if (TOS_NODE_ID == 254 ) myph->destination = 1;
     
     //PROBLEM! Here inside myph->destination or ->source there is 65535. So it will never find the route...
-    //if (myph->destination == 254)
-      //call Leds.led1Toggle();
+//    if (myph->destination == 254)
+//    	call Leds.led2Toggle();
     
 //    printf("[forwardPacket] At node= %u destination received = %u ",TOS_NODE_ID,destination); 
     for (i = 0; i < noOfRoutes; i++) {
       if (myph->destination == routingTable[i].node_id) {
-	nextHopAddress = routingTable[i].nexthop;
-	found = TRUE;
-	break;
+		nextHopAddress = routingTable[i].nexthop;
+		found = TRUE;
+		break;
       }
     }
-  
+    
     /*FOR TESTING PURPOSSES ONLY!*/
-    if(myph->destination == 65535) {
+/*    if(myph->destination == 65535 ||  found==FALSE) {
       nextHopAddress = AM_BROADCAST_ADDR;
       found = TRUE;
-     call Leds.led2Toggle();
-
-
     }
-    
+*/  
+
+
     if (!found) {       // If the the address was not found, use by default the broadcast.
-      
-    }
+ 	    }
     else {     // else forward it
-
+//    	if (myph->destination == 254)
+    		call Leds.led2Toggle();
+  
       sR_type = AM_IP;
       sR_dest = nextHopAddress; sR_m = *msg; sR_len = len;
       post sendRadio();
@@ -465,8 +465,9 @@ implementation {
       //post sendSerialAck();
 
       // Send the message over the radio to the specified destination
-      
-      forwardPacket(m, len);
+     
+//	  call Leds.led2Toggle(); 
+      forwardPacket(m, (myPacketHeader*)payload, len);
       return m;
   }
 
@@ -509,7 +510,7 @@ implementation {
   event void RoutingRadioSend.sendDone(message_t* m, error_t err){	
       routingRadioBusy = FALSE;
       if(err == SUCCESS){
-	radioBlink();
+//	radioBlink();
 //	printf("Routing update sent successfully from %u to %u \n",TOS_NODE_ID,sR_dest);
       } else {
 	failBlink();
@@ -525,14 +526,14 @@ implementation {
       myPacketHeader *myph;
       am_addr_t source;
 
-      // DEBUG
-      call Leds.led0Toggle();
-      
       // Discard if not a valid message
       if(call AMPacket.type(m) != AM_IP){
 	return m;
       }
 
+      // DEBUG
+//      call Leds.led1Toggle();
+      
       myph = (myPacketHeader*) payload;
       source = myph->sender;
 
@@ -549,8 +550,10 @@ implementation {
 	  post sendSerial();
 	}
 	else {
+	  if(myph->destination == 254)
+      	call Leds.led1Toggle();
 	  // Forward it to the appropriate destination
-	  forwardPacket(m, len);
+      forwardPacket(m, myph, len);
 	}
       }
       return m;
