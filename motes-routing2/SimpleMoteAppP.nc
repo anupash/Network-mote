@@ -33,6 +33,7 @@ module SimpleMoteAppP {
     // Packet interfaces
     interface Packet;
     interface AMPacket;
+    interface CC2420Packet;
 
     // Routing interfaces
     interface Timer<TMilli> as TimerRoutingUpdate;
@@ -219,7 +220,8 @@ implementation {
     // routes from the routing table
     for (i = 0; i < noOfRoutes; i++) {
       r_update_pkt->records[i].node_id = routingTable[i].node_id;
-      r_update_pkt->records[i].metric = routingTable[i].metric;
+      r_update_pkt->records[i].hop_count = routingTable[i].hop_count;
+      r_update_pkt->records[i].link_quality = routingTable[i].link_quality;
     }
     
     // broadcast the routing updates over the radio
@@ -249,10 +251,6 @@ implementation {
     if(TOS_NODE_ID == 1) myph->destination = 254;
     else if (TOS_NODE_ID == 254 ) myph->destination = 1;
     
-    //PROBLEM! Here inside myph->destination or ->source there is 65535. So it will never find the route...
-    //if (myph->destination == 254)
-      //call Leds.led1Toggle();
-    
 //    printf("[forwardPacket] At node= %u destination received = %u ",TOS_NODE_ID,destination); 
     for (i = 0; i < noOfRoutes; i++) {
       if (myph->destination == routingTable[i].node_id) {
@@ -262,16 +260,7 @@ implementation {
       }
     }
   
-    /*FOR TESTING PURPOSSES ONLY!*/
-    if(myph->destination == 65535) {
-      nextHopAddress = AM_BROADCAST_ADDR;
-      found = TRUE;
-     call Leds.led2Toggle();
-
-
-    }
-    
-    if (!found) {       // If the the address was not found, use by default the broadcast.
+    if (!found) {       // If the the address was not found, drop it
       
     }
     else {     // else forward it
@@ -289,7 +278,7 @@ implementation {
   * @param sourceAddr the address of the source nodes
   * 
   */
-  void processRoutingUpdate(routing_update_t* routingUpdateMsg, am_addr_t sourceAddr) {
+  void processRoutingUpdate(routing_update_t* routingUpdateMsg, am_addr_t sourceAddr, int8_t linkQuality) {
 
     uint8_t i, j;
     int idx;
@@ -299,17 +288,14 @@ implementation {
     uint8_t noOfRoutesUpdate = routingUpdateMsg->num_of_records;
     routing_record_t* updateRecords = routingUpdateMsg->records;
     
-    // Only for testing purposes
-/*    if((TOS_NODE_ID == 1 && senderNodeId == 254)||(TOS_NODE_ID == 254 && senderNodeId == 1))
-      return;*/
-    
 //      printf("inside [processRoutingUpdate]\n"); 
+
     // check if the source is already in the routing table
-      
     for (i = 0; i < noOfRoutes; i++) {
-      // if it has a route to it, make metric 1 (make it a neighbor)
+      // if it has a route to it, make hop_count 1 (make it a neighbor)
       if (routingTable[i].node_id == senderNodeId) {
-	routingTable[i].metric = 1;
+	routingTable[i].hop_count = 1;
+	routingTable[i].link_quality = linkQuality;
 	routingTable[i].nexthop = senderNodeId;
 	routingTable[i].timeout = MAX_TIMEOUT;
 	isNeighbor = TRUE;
@@ -317,12 +303,13 @@ implementation {
       }
     }
     
-    // if it is not a neighbor already, add it with metric 1
+    // if it is not a neighbor already, add it with hop_count 1
     if (!isNeighbor && noOfRoutes < MAX_NUM_RECORDS) {
       noOfRoutes++;
       routingTable[noOfRoutes - 1].node_id = senderNodeId;
       routingTable[noOfRoutes - 1].node_addr = sourceAddr;
-      routingTable[noOfRoutes - 1].metric = 1;
+      routingTable[noOfRoutes - 1].hop_count = 1;
+      routingTable[noOfRoutes - 1].link_quality = linkQuality;
       routingTable[noOfRoutes - 1].nexthop = senderNodeId;
       routingTable[noOfRoutes - 1].timeout = MAX_TIMEOUT;
 //        printf("[processRoutingUpdate] New Neighbour senderNodeID = %u and sourceAddr = %u noOfRoutes = %u \n ",senderNodeId, sourceAddr,noOfRoutes);
@@ -332,7 +319,7 @@ implementation {
     for (i = 0; i < noOfRoutesUpdate; i++) {
       idx = -1;
       for (j = 0; j < noOfRoutes; j++) {                       
-	// If there is an entry, check if the new route is better and update the next hop & metric
+	// If there is an entry, check if the new route is better and update the next hop, hop count & link quality
 	if (routingTable[j].node_id == updateRecords[i].node_id)
 	  idx = j;
       }
@@ -344,7 +331,8 @@ implementation {
 	  noOfRoutes++;
 	  routingTable[noOfRoutes - 1].node_id = updateRecords[i].node_id;
 	  routingTable[noOfRoutes - 1].node_addr = sourceAddr;
-	  routingTable[noOfRoutes - 1].metric = updateRecords[i].metric + 1;
+	  routingTable[noOfRoutes - 1].hop_count = updateRecords[i].hop_count + 1;
+	  routingTable[noOfRoutes - 1].link_quality = (updateRecords[i].link_quality + linkQuality) / (updateRecords[i].hop_count + 1);
 	  routingTable[noOfRoutes - 1].nexthop = senderNodeId;
 	  routingTable[noOfRoutes - 1].timeout = MAX_TIMEOUT;
 //            printf("[processRoutingUpdate] when idx = -1 added node_id = %u TOS_NODE_ID = %u \n",updateRecords[i].node_id,TOS_NODE_ID);
@@ -359,18 +347,25 @@ implementation {
 	else
 	{
 	  if ((updateRecords[i].node_id == TOS_NODE_ID) && (routingTable[idx].node_id == senderNodeId)) {
-	      routingTable[idx].metric = 1;
+	      routingTable[idx].hop_count = 1;
+	      routingTable[idx].link_quality = linkQuality;
 	      routingTable[idx].nexthop = senderNodeId;
 	      routingTable[idx].timeout = MAX_TIMEOUT;
 	      return;
 	  }
 	  else {
-	    if( routingTable[idx].metric > updateRecords[idx].metric + 1) { 
+	    if (routingTable[idx].link_quality < (updateRecords[i].link_quality + linkQuality) / (updateRecords[i].hop_count + 1)) {
+	      routingTable[idx].link_quality = (updateRecords[i].link_quality + linkQuality) / (updateRecords[i].hop_count + 1);
 	      routingTable[idx].nexthop = senderNodeId;
-	      routingTable[idx].metric = updateRecords[i].metric + 1;
-	      routingTable[idx].timeout = MAX_TIMEOUT;   // addeed because timeout timer has to be reset everytime a new update comes
-//              printf("[processRoutingUpdate] New Route is better in [IF] sender = %u source = %u \n",senderNodeId, sourceAddr);
+	      routingTable[idx].timeout = MAX_TIMEOUT;   // added because timeout timer has to be reset everytime a new update comes
 	    }
+	    else 
+	      if (routingTable[idx].hop_count > updateRecords[idx].hop_count + 1) { 
+		routingTable[idx].nexthop = senderNodeId;
+		routingTable[idx].hop_count = updateRecords[i].hop_count + 1;
+		routingTable[idx].timeout = MAX_TIMEOUT;   // added because timeout timer has to be reset everytime a new update comes
+  //              printf("[processRoutingUpdate] New Route is better in [IF] sender = %u source = %u \n",senderNodeId, sourceAddr);
+	      }
 	  }
 	}
       }
@@ -575,7 +570,7 @@ implementation {
       source = call AMPacket.source(m);
 //	printf("[RoutingRadioReceive.receive] from source=%u \n",source);
       receivedRoutingUpdate = (routing_update_t*) payload;
-      processRoutingUpdate(receivedRoutingUpdate, source);
+      processRoutingUpdate(receivedRoutingUpdate, source, call CC2420Packet.getRssi(payload));
       
       return m;
   }

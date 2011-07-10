@@ -60,8 +60,10 @@ implementation{
     SimpleMoteAppP.SerialSend -> SerialQueue;
 
     // Packet interfaces
+    components CC2420PacketC;
     SimpleMoteAppP.Packet -> Radio;
     SimpleMoteAppP.AMPacket -> Radio;
+    SimpleMoteAppP.CC2420Packet -> CC2420PacketC;
     
     // The timer components
     components new TimerMilliC() as TimerMilliRoutingUpdate;
