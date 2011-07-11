@@ -97,7 +97,7 @@ implementation {
 	case AM_IP: 
 	  call IPRadioSend.send(sR_dest, &sR_m, sR_len);
 // 	  //DEBUG
-	  call Leds.led1Toggle();
+//	  call Leds.led1Toggle();
 //	    printf("[sendRadio] AM_IP sent from %u = to %u = \n",TOS_NODE_ID,sR_dest);
 	  break;
 	
@@ -509,7 +509,7 @@ implementation {
   event void RoutingRadioSend.sendDone(message_t* m, error_t err){	
       routingRadioBusy = FALSE;
       if(err == SUCCESS){
-	radioBlink();
+//	radioBlink();
 //	printf("Routing update sent successfully from %u to %u \n",TOS_NODE_ID,sR_dest);
       } else {
 	failBlink();
