@@ -63,7 +63,7 @@ typedef nx_struct myPacketHeader {
  */
 enum {
   MAX_NUM_RECORDS = 10,
-  MAX_TIMEOUT = 35
+  MAX_TIMEOUT = 30
 };
 
 /* 
