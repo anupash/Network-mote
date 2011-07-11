@@ -241,11 +241,11 @@ implementation {
   * @param len the length of the message to be sent
   * 
   */
-  void forwardPacket(message_t* msg, uint8_t len) {
+  void forwardPacket(message_t* msg, myPacketHeader* myph, uint8_t len) {
     uint8_t i;
     am_addr_t nextHopAddress;// = AM_BROADCAST_ADDR;
     bool found = FALSE;
-    myPacketHeader* myph = (myPacketHeader*) msg;
+//    myPacketHeader* myph = (myPacketHeader*) msg;
 
     // If this mote is a node attatched to a PC, set the correct destination.
     if(TOS_NODE_ID == 1) myph->destination = 254;
@@ -254,9 +254,9 @@ implementation {
 //    printf("[forwardPacket] At node= %u destination received = %u ",TOS_NODE_ID,destination); 
     for (i = 0; i < noOfRoutes; i++) {
       if (myph->destination == routingTable[i].node_id) {
-	nextHopAddress = routingTable[i].nexthop;
-	found = TRUE;
-	break;
+		nextHopAddress = routingTable[i].nexthop;
+		found = TRUE;
+		break;
       }
     }
   
@@ -264,7 +264,6 @@ implementation {
       
     }
     else {     // else forward it
-
       sR_type = AM_IP;
       sR_dest = nextHopAddress; sR_m = *msg; sR_len = len;
       post sendRadio();
@@ -381,21 +380,21 @@ implementation {
     * Toggles a LED when a message is send to the radio. 
     */
   void radioBlink(){
-//         call Leds.led0Toggle();
+         call Leds.led0Toggle();
   }
 
    /** 
     * Toggles a LED when a message is send to the serial. 
     */
   void serialBlink(){
-//        call Leds.led1Toggle();
+        call Leds.led1Toggle();
   }
 
    /** 
     * Toggles a LED when a message couldn't be send and is dropped 
     */
   void failBlink(){
-//         call Leds.led2Toggle();
+         call Leds.led2Toggle();
   }
 
   /**********/
@@ -461,7 +460,7 @@ implementation {
 
       // Send the message over the radio to the specified destination
       
-      forwardPacket(m, len);
+      forwardPacket(m,(myPacketHeader*)payload, len);
       return m;
   }
 
@@ -545,7 +544,7 @@ implementation {
 	}
 	else {
 	  // Forward it to the appropriate destination
-	  forwardPacket(m, len);
+	  forwardPacket(m, myph, len);
 	}
       }
       return m;
