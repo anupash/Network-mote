@@ -289,6 +289,13 @@ implementation {
     
 //      printf("inside [processRoutingUpdate] current noOfRoutes = %u \n",noOfRoutes); 
 
+
+
+    // Only for testing purposes
+    if((TOS_NODE_ID == 1 && senderNodeId == 254)||(TOS_NODE_ID == 254 && senderNodeId == 1))
+      return;
+
+
     // check if the source is already in the routing table
     for (i = 0; i < noOfRoutes; i++) {
       // if it has a route to it, make hop_count 1 (make it a neighbor)
