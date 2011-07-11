@@ -354,14 +354,17 @@ implementation {
 	  }
 	  else {
 	    if (routingTable[idx].link_quality < (updateRecords[i].link_quality + linkQuality) / (updateRecords[i].hop_count + 1)) {
+          printf("[processRoutingUpdate] New Route has better link sender = %u source = %u oldlink_q = %d newlink_q = %d \n",senderNodeId, sourceAddr, routingTable[idx].link_quality,
+										(updateRecords[i].link_quality + linkQuality) / (updateRecords[i].hop_count + 1) );
 	      routingTable[idx].link_quality = (updateRecords[i].link_quality + linkQuality) / (updateRecords[i].hop_count + 1);
 	      routingTable[idx].nexthop = senderNodeId;
 	      routingTable[idx].timeout = MAX_TIMEOUT;   // added because timeout timer has to be reset everytime a new update comes
-          printf("[processRoutingUpdate] New Route has better link sender = %u source = %u \n",senderNodeId, sourceAddr);
 
 	    }
 	    else 
-	      if (routingTable[idx].hop_count > updateRecords[idx].hop_count + 1) { 
+	      if (routingTable[idx].hop_count > updateRecords[i].hop_count + 1) { 
+          printf("[processRoutingUpdate] New Route has better link sender = %u source = %u oldhopcount = %d newhopcount = %d \n",senderNodeId, sourceAddr,routingTable[idx].hop_count ,
+										(updateRecords[i].hop_count+1) );
 		routingTable[idx].nexthop = senderNodeId;
 		routingTable[idx].hop_count = updateRecords[i].hop_count + 1;
 		routingTable[idx].timeout = MAX_TIMEOUT;   // added because timeout timer has to be reset everytime a new update comes
