@@ -13,7 +13,7 @@
  */
 
 #include "SimpleMoteApp.h"
-#include "printf.h"
+//#include "printf.h"
 
 
 configuration SimpleMoteAppC{
