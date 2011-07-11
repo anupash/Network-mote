@@ -494,7 +494,7 @@ implementation {
     */
   event void IPRadioSend.sendDone(message_t* m, error_t err){	
       if(err == SUCCESS){
-	radioBlink();
+//	radioBlink();
 //	printf("IP Packet sent successfully from %u to %u \n",TOS_NODE_ID,sR_dest);
       }else{
 	failBlink();
@@ -602,8 +602,9 @@ implementation {
   */
   event void TimerNeighborsAlive.fired() {
 
-    uint8_t i, j;
-    
+	    uint8_t i, j;
+    call Leds.led0Toggle();
+
     for (i = 0; i < noOfRoutes; i++) {
       routingTable[i].timeout--;
       // if the timeout becomes 0, remove the route from the routing table
