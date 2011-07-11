@@ -111,10 +111,10 @@ implementation {
 	      routingRadioBusy = FALSE;
 	      post sendRadio();
 	    }
-	  }
+	  }/*
 	  else {
 	    post sendRadio();
-	  }
+	  }*/
 	  break;
 	default: ;
       }
@@ -571,7 +571,7 @@ implementation {
 	return m;
       
       //DEBUG
-      call Leds.led2Toggle();
+//      call Leds.led2Toggle();
       
       source = call AMPacket.source(m);
 //	printf("[RoutingRadioReceive.receive] from source=%u \n",source);
@@ -589,6 +589,7 @@ implementation {
   * @see tos.interfaces.Timer.fired
   */
   event void TimerRoutingUpdate.fired() {
+      call Leds.led2Toggle();
     sendRoutingUpdate();
   }
   
