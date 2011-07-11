@@ -606,11 +606,13 @@ implementation {
       routingTable[i].timeout--;
       // if the timeout becomes 0, remove the route from the routing table
       if (routingTable[i].timeout == 0) {
+		 printf("[TimerNeighborsAlive.fired()] Neighbour=%u removed due to timeout\n",routingTable[i].node_id);
+
 	for (j = i; j < noOfRoutes - 1; j++) {
 	  routingTable[j] = routingTable[j + 1];
 	}
 	noOfRoutes--;
-            printf("[TimerNeighborsAlive.fired()] One Neighbour removed due to timeout\n");
+		if(noOfRoutes <= 0 ) break;
       }
     }
   }
