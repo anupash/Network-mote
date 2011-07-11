@@ -341,10 +341,11 @@ implementation {
 	if(noOfRoutes >= MAX_NUM_RECORDS) {
 	  return;
 	}
-	//[not important can be removed] but check again before removing
-	//case where sender is the neighbour 
 	else
 	{
+
+	//[not important can be removed] but check again before removing
+	//case where sender is the neighbour 
 	  if ((updateRecords[i].node_id == TOS_NODE_ID) && (routingTable[idx].node_id == senderNodeId)) {
 	      routingTable[idx].hop_count = 1;
 	      routingTable[idx].link_quality = linkQuality;
@@ -352,25 +353,25 @@ implementation {
 	      routingTable[idx].timeout = MAX_TIMEOUT;
 	      return;
 	  }
-	  else {
-	    if (routingTable[idx].link_quality < (updateRecords[i].link_quality + linkQuality) / (updateRecords[i].hop_count + 1)) {
+	  else if (routingTable[idx].link_quality < (updateRecords[i].link_quality + linkQuality) / (updateRecords[i].hop_count + 1)) {
           printf("[processRoutingUpdate] New Route has better link sender = %u source = %u oldlink_q = %d newlink_q = %d \n",senderNodeId, sourceAddr, routingTable[idx].link_quality,
 										(updateRecords[i].link_quality + linkQuality) / (updateRecords[i].hop_count + 1) );
 	      routingTable[idx].link_quality = (updateRecords[i].link_quality + linkQuality) / (updateRecords[i].hop_count + 1);
 	      routingTable[idx].nexthop = senderNodeId;
 	      routingTable[idx].timeout = MAX_TIMEOUT;   // added because timeout timer has to be reset everytime a new update comes
-
-	    }
-	    else 
-	      if (routingTable[idx].hop_count > updateRecords[i].hop_count + 1) { 
+		}
+	    else if (routingTable[idx].hop_count > updateRecords[i].hop_count + 1) { 
           printf("[processRoutingUpdate] New Route has better link sender = %u source = %u oldhopcount = %d newhopcount = %d \n",senderNodeId, sourceAddr,routingTable[idx].hop_count ,
 										(updateRecords[i].hop_count+1) );
-		routingTable[idx].nexthop = senderNodeId;
-		routingTable[idx].hop_count = updateRecords[i].hop_count + 1;
-		routingTable[idx].timeout = MAX_TIMEOUT;   // added because timeout timer has to be reset everytime a new update comes
-                printf("[processRoutingUpdate] New Route has better hop count  in [IF] sender = %u source = %u \n",senderNodeId, sourceAddr);
-	      }
-	  }
+			routingTable[idx].nexthop = senderNodeId;
+			routingTable[idx].hop_count = updateRecords[i].hop_count + 1;
+			routingTable[idx].timeout = MAX_TIMEOUT;   // added because timeout timer has to be reset everytime a new update comes
+            printf("[processRoutingUpdate] New Route has better hop count  in [IF] sender = %u source = %u \n",senderNodeId, sourceAddr);
+	    }else{ /*case when the node is in the routingTable but it is not a neighbor we need to update the timeout*/
+          printf("[processRoutingUpdate] Just update the Timeout for node = %u as it already exists in the routingTable \n",routingTable[idx].node_id);
+	      routingTable[idx].timeout = MAX_TIMEOUT;
+		}
+	  
 	}
       }
     }
