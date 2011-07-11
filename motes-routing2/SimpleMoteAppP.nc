@@ -387,14 +387,14 @@ implementation {
     * Toggles a LED when a message is send to the serial. 
     */
   void serialBlink(){
-        call Leds.led1Toggle();
+       // call Leds.led1Toggle();
   }
 
    /** 
     * Toggles a LED when a message couldn't be send and is dropped 
     */
   void failBlink(){
-         call Leds.led2Toggle();
+      //   call Leds.led2Toggle();
   }
 
   /**********/
@@ -503,7 +503,7 @@ implementation {
   event void RoutingRadioSend.sendDone(message_t* m, error_t err){	
       routingRadioBusy = FALSE;
       if(err == SUCCESS){
-	radioBlink();
+//	radioBlink();
 //	printf("Routing update sent successfully from %u to %u \n",TOS_NODE_ID,sR_dest);
       } else {
 	failBlink();
@@ -519,14 +519,15 @@ implementation {
       myPacketHeader *myph;
       am_addr_t source;
 
-      // DEBUG
-      call Leds.led0Toggle();
-      
-      // Discard if not a valid message
+     // Discard if not a valid message
       if(call AMPacket.type(m) != AM_IP){
 	return m;
       }
 
+      // DEBUG
+      call Leds.led1Toggle();
+      
+ 
       myph = (myPacketHeader*) payload;
       source = myph->sender;
 
@@ -564,7 +565,7 @@ implementation {
 	return m;
       
       //DEBUG
-//      call Leds.led2Toggle();
+      call Leds.led2Toggle();
       
       source = call AMPacket.source(m);
 //	printf("[RoutingRadioReceive.receive] from source=%u \n",source);
