@@ -287,7 +287,7 @@ implementation {
     uint8_t noOfRoutesUpdate = routingUpdateMsg->num_of_records;
     routing_record_t* updateRecords = routingUpdateMsg->records;
     
-      printf("inside [processRoutingUpdate]\n"); 
+      printf("inside [processRoutingUpdate] current noOfRoutes = %u \n",noOfRoutes); 
 
     // check if the source is already in the routing table
     for (i = 0; i < noOfRoutes; i++) {
@@ -357,13 +357,15 @@ implementation {
 	      routingTable[idx].link_quality = (updateRecords[i].link_quality + linkQuality) / (updateRecords[i].hop_count + 1);
 	      routingTable[idx].nexthop = senderNodeId;
 	      routingTable[idx].timeout = MAX_TIMEOUT;   // added because timeout timer has to be reset everytime a new update comes
+          printf("[processRoutingUpdate] New Route has better link sender = %u source = %u \n",senderNodeId, sourceAddr);
+
 	    }
 	    else 
 	      if (routingTable[idx].hop_count > updateRecords[idx].hop_count + 1) { 
 		routingTable[idx].nexthop = senderNodeId;
 		routingTable[idx].hop_count = updateRecords[i].hop_count + 1;
 		routingTable[idx].timeout = MAX_TIMEOUT;   // added because timeout timer has to be reset everytime a new update comes
-                printf("[processRoutingUpdate] New Route is better in [IF] sender = %u source = %u \n",senderNodeId, sourceAddr);
+                printf("[processRoutingUpdate] New Route has better hop count  in [IF] sender = %u source = %u \n",senderNodeId, sourceAddr);
 	      }
 	  }
 	}
@@ -503,7 +505,7 @@ implementation {
   event void RoutingRadioSend.sendDone(message_t* m, error_t err){	
       routingRadioBusy = FALSE;
       if(err == SUCCESS){
-//	radioBlink();
+	radioBlink();
 	printf("Routing update sent successfully from %u to %u \n",TOS_NODE_ID,sR_dest);
       } else {
 	failBlink();
