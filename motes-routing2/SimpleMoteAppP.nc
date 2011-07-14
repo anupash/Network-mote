@@ -80,8 +80,10 @@ implementation {
   uint8_t noOfRoutes;
   message_t pkt;
   
-  // whether radio is busy or available for transmission
+  // whether Routing Radio is busy or available for transmission
   bool routingRadioBusy; 
+  // whether IP Radio is busy or available for transmission
+  bool IPRadioBusy; 
 
 
   /*********/
@@ -95,8 +97,19 @@ implementation {
       switch (sR_type) {
 	
 	case AM_IP: 
-	  call IPRadioSend.send(sR_dest, &sR_m, sR_len);
-// 	  //DEBUG
+	  if (!IPRadioBusy) {
+	    if (call IPRadioSend.send(sR_dest, &sR_m, sR_len) == SUCCESS){
+	      IPRadioBusy = TRUE;
+//		printf("[sendRadio] AM_ROUTING_UPDATE sent from %u = to %u = \n",TOS_NODE_ID,sR_dest);
+	    }
+/*	    else {
+	      IPRadioBusy = FALSE;
+	      post sendRadio();
+	    }
+*/
+	  }
+	  
+	// 	  //DEBUG
 //	  call Leds.led1Toggle();
 //	    printf("[sendRadio] AM_IP sent from %u = to %u = \n",TOS_NODE_ID,sR_dest);
 	  break;
@@ -149,6 +162,7 @@ implementation {
     // initialize routing table variables
     noOfRoutes = 0;
     routingRadioBusy = FALSE;
+    IPRadioBusy = FALSE;
 
     // start the timer for the routing updates
     call TimerRoutingUpdate.startPeriodic(5000);
@@ -503,8 +517,11 @@ implementation {
     */
   event void IPRadioSend.sendDone(message_t* m, error_t err){	
       if(err == SUCCESS){
+	IPRadioBusy = FALSE;
 //	radioBlink();
 //	printf("IP Packet sent successfully from %u to %u \n",TOS_NODE_ID,sR_dest);
+      }else if(err == EBUSY){
+	 IPRadioBusy = TRUE;
       }else{
 	failBlink();
       }
