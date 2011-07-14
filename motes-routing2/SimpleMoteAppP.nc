@@ -311,7 +311,9 @@ implementation {
     routing_record_t* updateRecords = routingUpdateMsg->records;
     
 //      printf("inside [processRoutingUpdate] current noOfRoutes = %u \n",noOfRoutes); 
-
+    if((TOS_NODE_ID == 1 && senderNodeId == 254)||(TOS_NODE_ID == 254 && senderNodeId == 1)||
+      (TOS_NODE_ID == 2 && senderNodeId == 254) || (TOS_NODE_ID == 3 && senderNodeId == 1))
+      return;
 
     // check if the source is already in the routing table
     for (i = 0; i < noOfRoutes; i++) {
