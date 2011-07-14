@@ -174,6 +174,11 @@ implementation {
       // Build identifier from seq_nr and ord_nr
       identifier = (((uint16_t) seq_no) << 8) | ord_no;
 
+      //Position 0 of the queue reserved for the Gateway
+      //THis is done because the size of queue limited to MAX_MOTES
+      if (client == 254) client = 0;
+      
+      
       // Just loop over all elements
       for(i = 0; i < PACKET_QUEUE_SIZE; i++){
 	  if(queues[client][i] == identifier){
@@ -196,6 +201,10 @@ implementation {
 
       // Build identifier from seq_nr and ord_nr
       identifier = (((uint16_t) seq_no) << 8) | ord_no;
+
+      //Position 0 of the queue reserved for the Gateway
+      //THis is done because the size of queue limited to MAX_MOTES
+      if (client == 254) client = 0;
 
       if(heads[client] == &queues[client][PACKET_QUEUE_SIZE - 1]){
 	  // We are at the end of the queue
@@ -254,9 +263,9 @@ implementation {
 //    printf("[forwardPacket] At node= %u destination received = %u ",TOS_NODE_ID,myph->destination); 
     for (i = 0; i < noOfRoutes; i++) {
       if (myph->destination == routingTable[i].node_id) {
-		nextHopAddress = routingTable[i].nexthop;
-		found = TRUE;
-		break;
+	  nextHopAddress = routingTable[i].nexthop;
+	  found = TRUE;
+	  break;
       }
     }
   
@@ -288,12 +297,6 @@ implementation {
     routing_record_t* updateRecords = routingUpdateMsg->records;
     
 //      printf("inside [processRoutingUpdate] current noOfRoutes = %u \n",noOfRoutes); 
-
-
-
-    // Only for testing purposes
-    if((TOS_NODE_ID == 1 && senderNodeId == 254)||(TOS_NODE_ID == 254 && senderNodeId == 1))
-      return;
 
 
     // check if the source is already in the routing table
@@ -367,18 +370,17 @@ implementation {
 	      routingTable[idx].nexthop = senderNodeId;
 	      routingTable[idx].timeout = MAX_TIMEOUT;   // added because timeout timer has to be reset everytime a new update comes
 		}
-	    else if (routingTable[idx].hop_count > updateRecords[i].hop_count + 1) { 
+	  else if (routingTable[idx].hop_count > updateRecords[i].hop_count + 1) { 
 //          printf("[processRoutingUpdate] New Route has better link sender = %u source = %u oldhopcount = %d newhopcount = %d \n",senderNodeId, sourceAddr,routingTable[idx].hop_count ,
 //										(updateRecords[i].hop_count+1) );
-			routingTable[idx].nexthop = senderNodeId;
-			routingTable[idx].hop_count = updateRecords[i].hop_count + 1;
-			routingTable[idx].timeout = MAX_TIMEOUT;   // added because timeout timer has to be reset everytime a new update comes
+	    routingTable[idx].nexthop = senderNodeId;
+	    routingTable[idx].hop_count = updateRecords[i].hop_count + 1;
+	    routingTable[idx].timeout = MAX_TIMEOUT;   // added because timeout timer has to be reset everytime a new update comes
 //            printf("[processRoutingUpdate] New Route has better hop count  in [IF] sender = %u source = %u \n",senderNodeId, sourceAddr);
-	    }else{ /*case when the node is in the routingTable but it is not a neighbor we need to update the timeout*/
+	  }else{ /*case when the node is in the routingTable but it is not a neighbor we need to update the timeout*/
 //          printf("[processRoutingUpdate] Just update the Timeout for node = %u as it already exists in the routingTable \n",routingTable[idx].node_id);
-	      routingTable[idx].timeout = MAX_TIMEOUT;
-		}
-	  
+	    routingTable[idx].timeout = MAX_TIMEOUT;
+	  }
 	}
       }
     }
@@ -393,7 +395,7 @@ implementation {
     * Toggles a LED when a message is send to the radio. 
     */
   void radioBlink(){
-         call Leds.led0Toggle();
+//         call Leds.led0Toggle();
   }
 
    /** 
@@ -539,7 +541,6 @@ implementation {
 
       // DEBUG
       call Leds.led1Toggle();
-      
  
       myph = (myPacketHeader*) payload;
       source = myph->sender;
@@ -596,7 +597,6 @@ implementation {
   * @see tos.interfaces.Timer.fired
   */
   event void TimerRoutingUpdate.fired() {
-      call Leds.led2Toggle();
     sendRoutingUpdate();
   }
   
@@ -609,8 +609,8 @@ implementation {
   */
   event void TimerNeighborsAlive.fired() {
 
-	    uint8_t i, j;
-    call Leds.led0Toggle();
+    uint8_t i, j;
+//    call Leds.led0Toggle();
 
     for (i = 0; i < noOfRoutes; i++) {
       routingTable[i].timeout--;
@@ -622,7 +622,7 @@ implementation {
 	  routingTable[j] = routingTable[j + 1];
 	}
 	noOfRoutes--;
-		if(noOfRoutes <= 0 ) break;
+	if(noOfRoutes <= 0 ) break;
       }
     }
   }
