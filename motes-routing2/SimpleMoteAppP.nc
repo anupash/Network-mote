@@ -1,6 +1,6 @@
 /**
  * @file   SimpleMoteAppP.nc
- * @author Marius Grysla, Oscar Dustman, Andrea Crotti
+ * @author Marius Grysla, Oscar Dustman, Andrea Crotti, Anupam Ashish, Ignacio Avellino, Oana Comanici
  * @date   Fri Aug 13 18:33:36 2010
  * 
  * @brief  Implementation of the MOTENET mote program.
@@ -579,7 +579,7 @@ implementation {
 	return m;
       
       //DEBUG
-//      call Leds.led2Toggle();
+      call Leds.led0Toggle();
       
       source = call AMPacket.source(m);
 //	printf("[RoutingRadioReceive.receive] from source=%u \n",source);
