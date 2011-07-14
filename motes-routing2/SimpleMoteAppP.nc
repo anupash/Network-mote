@@ -154,9 +154,15 @@ implementation {
   /* Functions */
   /*************/
 
- /**
-  * Initialize variables and timers of the routing module
-  */
+      
+  /**
+    * Removing an Entry from the routingTable
+    */
+  void removefromRoutingTable(uint8_t);
+  
+  /**
+    * Initialize variables and timers of the routing module
+    */
   void initRouting() {
     
     // initialize routing table variables
@@ -311,14 +317,21 @@ implementation {
     routing_record_t* updateRecords = routingUpdateMsg->records;
     
 //      printf("inside [processRoutingUpdate] current noOfRoutes = %u \n",noOfRoutes); 
-    if((TOS_NODE_ID == 1 && senderNodeId == 254) ||
+/*    if((TOS_NODE_ID == 1 && senderNodeId == 254) ||
        (TOS_NODE_ID == 1 && senderNodeId == 3)   ||
        (TOS_NODE_ID == 2 && senderNodeId == 254) || 
        (TOS_NODE_ID == 3 && senderNodeId == 1)   || 
        (TOS_NODE_ID == 254 && senderNodeId == 1) ||
-       (TOS_NODE_ID == 254 && senderNodeId == 2))
+       (TOS_NODE_ID == 254 && senderNodeId == 2) )
       return;
+*/    
 
+      if((TOS_NODE_ID == 1 && senderNodeId == 254) || (TOS_NODE_ID == 254 && senderNodeId == 1))
+	return;
+      
+      //DEBUG
+      call Leds.led0Toggle();
+    
     // check if the source is already in the routing table
     for (i = 0; i < noOfRoutes; i++) {
       // if it has a route to it, make hop_count 1 (make it a neighbor)
@@ -390,7 +403,7 @@ implementation {
 	      routingTable[idx].nexthop = senderNodeId;
 	      routingTable[idx].timeout = MAX_TIMEOUT;   // added because timeout timer has to be reset everytime a new update comes
 		}
-	  else if (routingTable[idx].hop_count > updateRecords[i].hop_count + 1) { 
+	  else if ((routingTable[idx].hop_count > updateRecords[i].hop_count + 1) && (updateRecords[i].hop_count + 1 < MAX_HOPCOUNTS)) { 
 //          printf("[processRoutingUpdate] New Route has better link sender = %u source = %u oldhopcount = %d newhopcount = %d \n",senderNodeId, sourceAddr,routingTable[idx].hop_count ,
 //										(updateRecords[i].hop_count+1) );
 	    routingTable[idx].nexthop = senderNodeId;
@@ -601,8 +614,8 @@ implementation {
       if (len != sizeof(routing_update_t)  || call AMPacket.type(m) != AM_ROUTING_UPDATE)
 	return m;
       
-      //DEBUG
-      call Leds.led0Toggle();
+//       //DEBUG
+//       call Leds.led0Toggle();
       
       source = call AMPacket.source(m);
 //	printf("[RoutingRadioReceive.receive] from source=%u \n",source);
@@ -633,6 +646,7 @@ implementation {
   event void TimerNeighborsAlive.fired() {
 
     uint8_t i, j;
+    am_addr_t nexthop;
 //    call Leds.led0Toggle();
 
     for (i = 0; i < noOfRoutes; i++) {
@@ -640,13 +654,26 @@ implementation {
       // if the timeout becomes 0, remove the route from the routing table
       if (routingTable[i].timeout == 0) {
 //		 printf("[TimerNeighborsAlive.fired()] Neighbour=%u removed due to timeout\n",routingTable[i].node_id);
-
-	for (j = i; j < noOfRoutes - 1; j++) {
-	  routingTable[j] = routingTable[j + 1];
+	nexthop = routingTable[i].node_id;
+	removefromRoutingTable(i);
+	
+	//Remove all of the entries whose nexthop was Timedout entry
+  	for (j = 0; j < noOfRoutes; j++) {
+	  if(routingTable[j].nexthop == nexthop)
+	  removefromRoutingTable(j);
 	}
-	noOfRoutes--;
-	if(noOfRoutes <= 0 ) break;
+	if(noOfRoutes <= 0) break;
+	
       }
-    }
+    }    
   }
+  
+  void removefromRoutingTable(uint8_t i){
+    uint8_t j = 0;
+    for (j = i; j < noOfRoutes - 1; j++) {
+      routingTable[j] = routingTable[j + 1];
+    }
+    noOfRoutes--;
+  }
+
 }
