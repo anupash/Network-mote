@@ -9,6 +9,7 @@
 
 #include "SimpleMoteApp.h"
 #include "printf.h"
+#include "string.h"
 
 module SimpleMoteAppP {
   uses {
@@ -68,6 +69,9 @@ implementation {
   message_t sS_m;
   uint8_t sS_len;
   
+  // Variables needed for debug purposes
+  char debugMsg[100];
+  
   /*************************/
   /* Variables for routing */
   /*************************/
@@ -100,7 +104,9 @@ implementation {
 	  if (!IPRadioBusy) {
 	    if (call IPRadioSend.send(sR_dest, &sR_m, sR_len) == SUCCESS){
 	      IPRadioBusy = TRUE;
-	      printf("[sendRadio] AM_ROUTING_UPDATE sent from %u = to %u = \n",TOS_NODE_ID,sR_dest);
+	      
+	      sprintf(debugMsg, "[sendRadio] AM_IP sent from %u = to %u = \n",TOS_NODE_ID,sR_dest);
+	      printDebugMessage(debugMsg);
 	    }
 /*	    else {
 	      IPRadioBusy = FALSE;
@@ -111,14 +117,17 @@ implementation {
 	  
 	// 	  //DEBUG
 //	  call Leds.led1Toggle();
-	  printf("[sendRadio] AM_IP sent from %u = to %u = \n",TOS_NODE_ID,sR_dest);
+	  sprintf(debugMsg, "[sendRadio] AM_IP sent from %u = to %u = \n",TOS_NODE_ID,sR_dest);
+	  printDebugMessage(debugMsg);
 	  break;
 	
 	case AM_ROUTING_UPDATE:
 	  if (!routingRadioBusy) {
 	    if (call RoutingRadioSend.send(sR_dest, &sR_m, sR_len) == SUCCESS){
 	      routingRadioBusy = TRUE;
-	      printf("[sendRadio] AM_ROUTING_UPDATE sent from %u = to %u = \n",TOS_NODE_ID,sR_dest);
+	      
+	      sprintf(debugMsg, "[sendRadio] AM_ROUTING_UPDATE sent from %u = to %u = \n",TOS_NODE_ID,sR_dest);
+	      printDebugMessage(debugMsg);
 	    }
 	    else {
 	      routingRadioBusy = FALSE;
@@ -154,13 +163,19 @@ implementation {
   /* Functions */
   /*************/
 
-      
-  /**
+   /**
+    * Print function for debugging purposes
+    */
+   void printDebugMessage(const char* msg) {
+      printf(msg);
+   }
+  
+   /**
     * Removing an Entry from the routingTable
     */
   void removefromRoutingTable(uint8_t);
   
-  /**
+   /**
     * Initialize variables and timers of the routing module
     */
   void initRouting() {
@@ -280,7 +295,9 @@ implementation {
     if(TOS_NODE_ID == 1) myph->destination = 254;
     else if (TOS_NODE_ID == 254 ) myph->destination = 1;
     
-    printf("[forwardPacket] At node= %u destination received = %u ",TOS_NODE_ID,myph->destination); 
+    sprintf(debugMsg, "[forwardPacket] At node= %u destination received = %u ",TOS_NODE_ID,myph->destination);
+    printDebugMessage(debugMsg);
+
     for (i = 0; i < noOfRoutes; i++) {
       if (myph->destination == routingTable[i].node_id) {
 	  nextHopAddress = routingTable[i].nexthop;
@@ -316,7 +333,8 @@ implementation {
     uint8_t noOfRoutesUpdate = routingUpdateMsg->num_of_records;
     routing_record_t* updateRecords = routingUpdateMsg->records;
     
-    printf("inside [processRoutingUpdate] current noOfRoutes = %u \n",noOfRoutes); 
+    sprintf(debugMsg, "inside [processRoutingUpdate] current noOfRoutes = %u \n",noOfRoutes); 
+    printDebugMessage(debugMsg);
 /*    if((TOS_NODE_ID == 1 && senderNodeId == 254) ||
        (TOS_NODE_ID == 1 && senderNodeId == 3)   ||
        (TOS_NODE_ID == 2 && senderNodeId == 254) || 
@@ -354,7 +372,9 @@ implementation {
       routingTable[noOfRoutes - 1].link_quality = linkQuality;
       routingTable[noOfRoutes - 1].nexthop = senderNodeId;
       routingTable[noOfRoutes - 1].timeout = MAX_TIMEOUT;
-      printf("[processRoutingUpdate] New Neighbour added senderNodeID = %u and sourceAddr = %u noOfRoutes = %u \n ",senderNodeId, sourceAddr,noOfRoutes);
+      
+      sprintf(debugMsg, "[processRoutingUpdate] New Neighbour added senderNodeID = %u and sourceAddr = %u noOfRoutes = %u \n ",senderNodeId, sourceAddr,noOfRoutes);
+      printDebugMessage(debugMsg);
     }
     
     // For each entry in the routing update received, check if this entry exists in the routing table and update it or create it
@@ -377,7 +397,9 @@ implementation {
 	  routingTable[noOfRoutes - 1].link_quality = (updateRecords[i].link_quality + linkQuality) / (updateRecords[i].hop_count + 1);
 	  routingTable[noOfRoutes - 1].nexthop = senderNodeId;
 	  routingTable[noOfRoutes - 1].timeout = MAX_TIMEOUT;
-	  printf("[processRoutingUpdate] when idx = -1 added node_id = %u TOS_NODE_ID = %u \n",updateRecords[i].node_id,TOS_NODE_ID);
+	  
+	  sprintf(debugMsg, "[processRoutingUpdate] when idx = -1 added node_id = %u TOS_NODE_ID = %u \n",updateRecords[i].node_id,TOS_NODE_ID);
+	  printDebugMessage(debugMsg);
 	}
       }
       else {
@@ -397,21 +419,30 @@ implementation {
 	      return;
 	  }
 	  else if (routingTable[idx].link_quality < (updateRecords[i].link_quality + linkQuality) / (updateRecords[i].hop_count + 1)) {
-          printf("[processRoutingUpdate] New Route has better link nexthop<->sender = %u source = %u oldlink_q = %d newlink_q = %d \n",senderNodeId, sourceAddr, routingTable[idx].link_quality,
+	      sprintf(debugMsg, "[processRoutingUpdate] New Route has better link nexthop<->sender = %u source = %u oldlink_q = %d newlink_q = %d \n",senderNodeId, sourceAddr, routingTable[idx].link_quality,
 										(updateRecords[i].link_quality + linkQuality) / (updateRecords[i].hop_count + 1) );
+	      printDebugMessage(debugMsg);
+	      
 	      routingTable[idx].link_quality = (updateRecords[i].link_quality + linkQuality) / (updateRecords[i].hop_count + 1);
 	      routingTable[idx].nexthop = senderNodeId;
 	      routingTable[idx].timeout = MAX_TIMEOUT;   // added because timeout timer has to be reset everytime a new update comes
 		}
 	  else if ((routingTable[idx].hop_count > updateRecords[i].hop_count + 1) && (updateRecords[i].hop_count + 1 < MAX_HOPCOUNTS)) { 
-	    printf("[processRoutingUpdate] New Route has better link nexthop<->sender = %u source = %u oldhopcount = %d newhopcount = %d \n",senderNodeId, sourceAddr,routingTable[idx].hop_count ,
+	    sprintf(debugMsg, "[processRoutingUpdate] New Route has better link nexthop<->sender = %u source = %u oldhopcount = %d newhopcount = %d \n",senderNodeId, sourceAddr,routingTable[idx].hop_count ,
 										(updateRecords[i].hop_count+1) );
+	    printDebugMessage(debugMsg);
+	    
 	    routingTable[idx].nexthop = senderNodeId;
 	    routingTable[idx].hop_count = updateRecords[i].hop_count + 1;
 	    routingTable[idx].timeout = MAX_TIMEOUT;   // added because timeout timer has to be reset everytime a new update comes
-            printf("[processRoutingUpdate] New Route has better hop count  in [IF] sender = %u source = %u \n",senderNodeId, sourceAddr);
-	  }else{ /*case when the node is in the routingTable but it is not a neighbor we need to update the timeout*/
-	    printf("[processRoutingUpdate] Just update the Timeout for node = %u as it already exists in the routingTable \n",routingTable[idx].node_id);
+            
+            sprintf(debugMsg, "[processRoutingUpdate] New Route has better hop count  in [IF] sender = %u source = %u \n",senderNodeId, sourceAddr);
+	    printDebugMessage(debugMsg);
+	    
+	  }else { /*case when the node is in the routingTable but it is not a neighbor we need to update the timeout*/
+	    sprintf(debugMsg, "[processRoutingUpdate] Just update the Timeout for node = %u as it already exists in the routingTable \n",routingTable[idx].node_id);
+	    printDebugMessage(debugMsg);
+	    
 	    routingTable[idx].timeout = MAX_TIMEOUT;
 	  }
 	}
@@ -581,7 +612,9 @@ implementation {
       myph = (myPacketHeader*) payload;
       source = myph->sender;
 
-      printf("[IPRadioReceive] from source = %u \n",source);
+      sprintf(debugMsg, "[IPRadioReceive] from source = %u \n",source);
+      printDebugMessage(debugMsg);
+      
       // Test, whether this message is a duplicate
       if (!inQueue(source, myph->seq_no, myph->ord_no)) {
 	// Add this message to the queue of seen messages
@@ -618,7 +651,10 @@ implementation {
 //       call Leds.led0Toggle();
       
       source = call AMPacket.source(m);
-      printf("[RoutingRadioReceive.receive] from source=%u \n",source);
+      
+      sprintf(debugMsg, "[RoutingRadioReceive.receive] from source=%u \n",source);
+      printDebugMessage(debugMsg);
+      
       receivedRoutingUpdate = (routing_update_t*) payload;
       processRoutingUpdate(receivedRoutingUpdate, source, call CC2420Packet.getRssi(payload));
       
@@ -671,7 +707,9 @@ implementation {
     uint8_t j = 0;
     for (j = i; j < noOfRoutes - 1; j++) {
       routingTable[j] = routingTable[j + 1];
-      printf("[TimerNeighborsAlive.fired()] Neighbour=%u removed due to timeout\n",routingTable[i].node_id);      
+      
+      sprintf(debugMsg, "[TimerNeighborsAlive.fired()] Neighbour=%u removed due to timeout\n",routingTable[i].node_id);      
+      printDebugMessage(debugMsg);
     }
     noOfRoutes--;
   }
