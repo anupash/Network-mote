@@ -176,7 +176,7 @@ implementation {
 	  if (call IPRadioSend.send(sR_dest, &sR_m, sR_len) == SUCCESS) {
 	    IPRadioBusy = TRUE;
 	    
-	    sprintf(debugMsg, "[sendRadio] AM_IP sent from %u = to %u = \n",TOS_NODE_ID,sR_dest);
+	    //sprintf(debugMsg, "[sendRadio] AM_IP sent from %u to %u\n",TOS_NODE_ID, sR_dest);
 	    printDebugMessage(debugMsg);
 	  }
 	  else
@@ -193,7 +193,7 @@ implementation {
 	  if (call RoutingRadioSend.send(sR_dest, &sR_m, sR_len) == SUCCESS) {
 	    routingRadioBusy = TRUE;
 	    
-	    sprintf(debugMsg, "[sendRadio] AM_ROUTING_UPDATE sent from %u = to %u = \n",TOS_NODE_ID,sR_dest);
+	    //sprintf(debugMsg, "[sendRadio] AM_ROUTING_UPDATE sent from %u to %u\n",TOS_NODE_ID,sR_dest);
 	    printDebugMessage(debugMsg);
 	  }
 	  else
@@ -232,7 +232,7 @@ implementation {
     * Print function for debugging purposes
     */
   void printDebugMessage(const char* msg) {
-    printf(msg);
+    //printf(msg);
   }
    
    
@@ -244,12 +244,13 @@ implementation {
   */
   void printRoutingTable(uint8_t mote){
     uint8_t i;
+    char route[100];
 
     for(i=0; i < noOfRoutes[mote]; i++){
-      sprintf(debugMsg, "%s| %u, %u, %u", debugMsg, routingTable[mote][i].nexthop, routingTable[mote][i].hop_count, routingTable[mote][i].link_quality);
+      //sprintf(route, "%s| %u, %u, %u", route, routingTable[mote][i].nexthop, routingTable[mote][i].hop_count, routingTable[mote][i].link_quality);
     }
-    sprintf(debugMsg,"RT [ %s ]",debugMsg);
-    printDebugMessage(debugMsg);
+    //sprintf(route,"RT [ %s ]\n",route);
+    printDebugMessage(route);
   }
   
    /**
@@ -269,7 +270,7 @@ implementation {
     
     // start timer for checking dead neighbors
     call TimerNeighborsAlive.startPeriodic(1000);
-    printfflush();
+    //printfflush();
   }
   
    /** 
@@ -374,7 +375,7 @@ implementation {
     if(TOS_NODE_ID == 1) myph->destination = 254;
     else if (TOS_NODE_ID == 254 ) myph->destination = 1;
     
-    sprintf(debugMsg, "[forwardPacket] At node= %u destination received = %u ", TOS_NODE_ID, myph->destination);
+    //sprintf(debugMsg, "[forwardPacket] At node= %u destination received = %u ", TOS_NODE_ID, myph->destination);
     printDebugMessage(debugMsg);
 
     // resolve next hop for destination
@@ -444,7 +445,7 @@ implementation {
     boolean routeFound = FALSE;
     
     
-    sprintf(debugMsg, "[addNewPath()] ******** destination=%u nexthop=%u hopcount=%u \n",destination, next_hop, hop_count);      
+    //sprintf(debugMsg, "[addNewPath()] ******** destination=%u nexthop=%u hopcount=%u \n",destination, next_hop, hop_count);      
     printDebugMessage(debugMsg);
     printRoutingTable(destination);
     
@@ -452,14 +453,14 @@ implementation {
     for (i = 0; i < noOfRoutes[destination]; i++) {
       
       if (routingTable[destination][i].nexthop == next_hop) {
-	sprintf(debugMsg, "[addNewPath()] Found a route at i=%u\n",i);      
-	printDebugMessage(debugMsg);
+	//sprintf(debugMsg, "[addNewPath()] Found a route at i=%u\n",i);      
+	//printDebugMessage(debugMsg);
       
 	// if the exact same path and metric already exists, do nothing
 	if (routingTable[destination][i].hop_count == hop_count &&
 	    routingTable[destination][i].link_quality == link_quality){
-	  sprintf(debugMsg, "[addNewPath()] Ignoring update because of same metric and path\n");      
-	  printDebugMessage(debugMsg);
+	  ////sprintf(debugMsg, "[addNewPath()] Ignoring update because of same metric and path\n");      
+	  //printDebugMessage(debugMsg);
 	  return;
 	}
 	// else if the metric has changed 
@@ -467,8 +468,8 @@ implementation {
 	// otherwise discard it
 	if (link_quality < MIN_LINK_QUALITY) {
 	  
-	  sprintf(debugMsg, "[addNewPath()] Removing because the link quality was unacceptable\n");      
-	  printDebugMessage(debugMsg);
+	  //sprintf(debugMsg, "[addNewPath()] Removing because the link quality was unacceptable\n");      
+	  //printDebugMessage(debugMsg);
 	  removeFromRoutingTable(destination, next_hop);
 	  return;
 	}
@@ -479,8 +480,8 @@ implementation {
     }
 
 
-    sprintf(debugMsg, "[addNewPath()] routeFound = %s\n",routeFound?"TRUE":"FALSE");      
-    printDebugMessage(debugMsg);
+    //sprintf(debugMsg, "[addNewPath()] routeFound = %s\n",routeFound?"TRUE":"FALSE");      
+    //printDebugMessage(debugMsg);
     
     if (routeFound) {
       // update the existing metric and re-order the paths
@@ -492,8 +493,8 @@ implementation {
 	if (isPathBetter(routingTable[destination][i].hop_count, routingTable[destination][j].hop_count,
 	    routingTable[destination][i].link_quality, routingTable[destination][j].link_quality)) {
 	  found = TRUE;
-	  sprintf(debugMsg, "[addNewPath()] First position with a worse metric=%u\n",j);      
-	  printDebugMessage(debugMsg);
+	  //sprintf(debugMsg, "[addNewPath()] First position with a worse metric=%u\n",j);      
+	  //printDebugMessage(debugMsg);
 	  break;
 	}
       }
@@ -573,9 +574,9 @@ implementation {
 	}
       }
     }
-    printRoutingTable(destination);  
-    sprintf(debugMsg, "[addNewPath()] ******** END\n");      
-    printDebugMessage(debugMsg);
+    //printRoutingTable(destination);  
+    //sprintf(debugMsg, "[addNewPath()] ******** END\n");      
+    //printDebugMessage(debugMsg);
   }
 
    /**
@@ -635,7 +636,7 @@ implementation {
 	for (i = 0; i < MAX_MOTES && i != destination; i++)
 	  removeFromRoutingTable(i, destination);
       
-      sprintf(debugMsg, "[removeFromRoutingTable()] Neighbour=%u removed due to timeout\n",destination);      
+      //sprintf(debugMsg, "[removeFromRoutingTable()] Neighbour=%u removed due to timeout\n",destination);      
       printDebugMessage(debugMsg);
       
       /// TODO transmit routing update at topology change
@@ -836,7 +837,7 @@ implementation {
       myph = (myPacketHeader*) payload;
       source = myph->sender;
 
-      sprintf(debugMsg, "[IPRadioReceive] from source = %u \n",source);
+      //sprintf(debugMsg, "[IPRadioReceive] from source = %u \n",source);
       printDebugMessage(debugMsg);
       
       // Test, whether this message is a duplicate
@@ -876,7 +877,7 @@ implementation {
       
       source = call AMPacket.source(m);
       
-      sprintf(debugMsg, "[RoutingRadioReceive.receive] from source=%u \n",source);
+      //sprintf(debugMsg, "[RoutingRadioReceive.receive] from source=%u \n",source);
       printDebugMessage(debugMsg);
       
       receivedRoutingUpdate = (routing_update_t*) payload;
