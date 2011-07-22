@@ -64,7 +64,9 @@ typedef nx_struct myPacketHeader {
 enum {
   MAX_NUM_RECORDS = 10,
   MAX_TIMEOUT = 30,
-  MAX_HOPCOUNTS = 15
+  MAX_HOPCOUNTS = 15,
+  MIN_LINK_QUALITY = -60, 
+  MAX_RETRANSMISSIONS = 2
 };
 
 /* 
@@ -75,12 +77,8 @@ enum {
   AM_IP = 12
 };
 
-typedef nx_struct routing_record {
-    nx_uint8_t node_id;
-    nx_uint8_t hop_count;
-    nx_int8_t link_quality;
-} routing_record_t;
 
+// routing table entry type
 typedef nx_struct routing_table {
     nx_uint8_t node_id;
     nx_am_addr_t node_addr;
@@ -90,6 +88,14 @@ typedef nx_struct routing_table {
     nx_uint8_t timeout;
 } routing_table_t;
 
+// routing update entry type
+typedef nx_struct routing_record {
+    nx_uint8_t node_id;
+    nx_uint8_t hop_count;
+    nx_int8_t link_quality;
+} routing_record_t;
+
+// routing update type
 typedef nx_struct routing_update {
     nx_uint8_t node_id;
     nx_uint8_t num_of_records;

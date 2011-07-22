@@ -71,4 +71,7 @@ implementation{
     SimpleMoteAppP.TimerRoutingUpdate -> TimerMilliRoutingUpdate; 
     SimpleMoteAppP.TimerNeighborsAlive -> TimerMilliNeighborsAlive;
     
+    // ACK
+    SimpleMoteAppP.PacketAcknowledgements -> Radio;
+    
 }
