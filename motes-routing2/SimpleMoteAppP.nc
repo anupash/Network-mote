@@ -8,7 +8,7 @@
  */
 
 #include "SimpleMoteApp.h"
-#include "printf.h"
+//#include "printf.h"
 #include "string.h"
 
 module SimpleMoteAppP {
@@ -73,7 +73,7 @@ implementation {
   uint8_t sS_len;
   
   // Variables needed for debug purposes
-  char debugMsg[100];
+  // char debugMsg[100];
   
   /*************************/
   /* Variables for routing */
@@ -104,7 +104,7 @@ implementation {
   * @param msg The debug message to be displayed
   * 
   */
-  void printDebugMessage(const char* msg);
+  void printDebugMessage(char* msg);
   
   /**
   * Print Routing Tables for debugging purposes
@@ -177,7 +177,7 @@ implementation {
 	    IPRadioBusy = TRUE;
 	    
 	    //sprintf(debugMsg, "[sendRadio] AM_IP sent from %u to %u\n",TOS_NODE_ID, sR_dest);
-	    printDebugMessage(debugMsg);
+	    //printDebugMessage(debugMsg);
 	  }
 	  else
 	    post sendRadio();
@@ -194,7 +194,7 @@ implementation {
 	    routingRadioBusy = TRUE;
 	    
 	    //sprintf(debugMsg, "[sendRadio] AM_ROUTING_UPDATE sent from %u to %u\n",TOS_NODE_ID,sR_dest);
-	    printDebugMessage(debugMsg);
+	    //printDebugMessage(debugMsg);
 	  }
 	  else
 	    post sendRadio();
@@ -231,8 +231,9 @@ implementation {
    /**
     * Print function for debugging purposes
     */
-  void printDebugMessage(const char* msg) {
+  void printDebugMessage(char* msg) {
     //printf(msg);
+    //printfflush();
   }
    
    
@@ -244,13 +245,15 @@ implementation {
   */
   void printRoutingTable(uint8_t mote){
     uint8_t i;
-    char route[100];
-
+   // char route[100];
+    //printf("noOfRoutes = %u \n",noOfRoutes[mote]);
     for(i=0; i < noOfRoutes[mote]; i++){
-      //sprintf(route, "%s| %u, %u, %u", route, routingTable[mote][i].nexthop, routingTable[mote][i].hop_count, routingTable[mote][i].link_quality);
+      //printf(" %u, %u, %u|", routingTable[mote][i].nexthop, routingTable[mote][i].hop_count, routingTable[mote][i].link_quality);
     }
-    //sprintf(route,"RT [ %s ]\n",route);
-    printDebugMessage(route);
+    //sprintf(route,"RT\n");
+    //printf("]\n");
+    //printDebugMessage(route);
+    //printfflush();
   }
   
    /**
@@ -376,7 +379,7 @@ implementation {
     else if (TOS_NODE_ID == 254 ) myph->destination = 1;
     
     //sprintf(debugMsg, "[forwardPacket] At node= %u destination received = %u ", TOS_NODE_ID, myph->destination);
-    printDebugMessage(debugMsg);
+    //printDebugMessage(debugMsg);
 
     // resolve next hop for destination
     if (noOfRoutes[myph->destination] > 0)
@@ -446,7 +449,7 @@ implementation {
     
     
     //sprintf(debugMsg, "[addNewPath()] ******** destination=%u nexthop=%u hopcount=%u \n",destination, next_hop, hop_count);      
-    printDebugMessage(debugMsg);
+    //printDebugMessage(debugMsg);
     printRoutingTable(destination);
     
     // first check if the new path already exists
@@ -637,7 +640,7 @@ implementation {
 	  removeFromRoutingTable(i, destination);
       
       //sprintf(debugMsg, "[removeFromRoutingTable()] Neighbour=%u removed due to timeout\n",destination);      
-      printDebugMessage(debugMsg);
+      //printDebugMessage(debugMsg);
       
       /// TODO transmit routing update at topology change
     }
@@ -838,7 +841,7 @@ implementation {
       source = myph->sender;
 
       //sprintf(debugMsg, "[IPRadioReceive] from source = %u \n",source);
-      printDebugMessage(debugMsg);
+      //printDebugMessage(debugMsg);
       
       // Test, whether this message is a duplicate
       if (!inQueue(source, myph->seq_no, myph->ord_no)) {
@@ -878,7 +881,7 @@ implementation {
       source = call AMPacket.source(m);
       
       //sprintf(debugMsg, "[RoutingRadioReceive.receive] from source=%u \n",source);
-      printDebugMessage(debugMsg);
+      //printDebugMessage(debugMsg);
       
       receivedRoutingUpdate = (routing_update_t*) payload;
       processRoutingUpdate(receivedRoutingUpdate, source, call CC2420Packet.getRssi(payload));
