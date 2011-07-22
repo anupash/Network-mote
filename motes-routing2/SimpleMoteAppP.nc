@@ -107,6 +107,14 @@ implementation {
   void printDebugMessage(const char* msg);
   
   /**
+  * Print Routing Tables for debugging purposes
+  * 
+  * @param destination Node for which the alternative paths has to be printed
+  * 
+  */
+  void printRoutingTable(uint8_t mote);
+  
+  /**
   * Add a new path to a certain destination in the routingTable
   * 
   * @param destination The destination for which a new path should be added 
@@ -223,9 +231,26 @@ implementation {
    /**
     * Print function for debugging purposes
     */
-   void printDebugMessage(const char* msg) {
-      printf(msg);
-   }
+  void printDebugMessage(const char* msg) {
+    printf(msg);
+  }
+   
+   
+  /**
+    * Print Routing Tables for debugging purposes
+    * 
+    * @param mote Node for which the alternative paths has to be printed
+    * 
+  */
+  void printRoutingTable(uint8_t mote){
+    uint8_t i;
+
+    for(i=0; i < noOfRoutes[mote]; i++){
+      sprintf(debugMsg, "%s| %u, %u, %u", debugMsg, routingTable[mote][i].nexthop, routingTable[mote][i].hop_count, routingTable[mote][i].link_quality);
+    }
+    sprintf(debugMsg,"RT [ %s ]",debugMsg);
+    printDebugMessage(debugMsg);
+  }
   
    /**
     * Initialize variables and timers of the routing module
@@ -319,7 +344,7 @@ implementation {
     // add best routes from the routing table
     for (i = 0; i < MAX_MOTES; i++) {
       r_update_pkt->records[i].node_id = routingTable[i][0].node_id;
-      ///TODO include node address also? or drop it altogether?
+      r_update_pkt->records[i].node_addr = routingTable[i][0].node_addr;
       r_update_pkt->records[i].hop_count = routingTable[i][0].hop_count;
       r_update_pkt->records[i].link_quality = routingTable[i][0].link_quality;
     }
@@ -396,8 +421,10 @@ implementation {
     addNewPath(senderNodeId, sourceAddr, senderNodeId, 1, linkQuality);
     
     // then process the routing update records one by one
-    for (i = 0; i < noOfRoutesUpdate; i++)
-      addNewPath(updateRecords[i].node_id, sourceAddr /*TODO transmit it or leave it out - not correct*/, senderNodeId, updateRecords[i].hop_count + 1, (updateRecords[i].link_quality + linkQuality) / (updateRecords[i].hop_count + 1));
+    for (i = 0; i < noOfRoutesUpdate; i++){
+      addNewPath(updateRecords[i].node_id, updateRecords[i].node_addr /*TODO transmit it or leave it out - not correct*/, senderNodeId, updateRecords[i].hop_count + 1, (updateRecords[i].link_quality + linkQuality) / (updateRecords[i].hop_count + 1));
+    }
+    
   }
     
 
@@ -416,19 +443,32 @@ implementation {
     boolean found = FALSE;
     boolean routeFound = FALSE;
     
+    
+    sprintf(debugMsg, "[addNewPath()] ******** destination=%u nexthop=%u hopcount=%u \n",destination, next_hop, hop_count);      
+    printDebugMessage(debugMsg);
+    printRoutingTable(destination);
+    
     // first check if the new path already exists
     for (i = 0; i < noOfRoutes[destination]; i++) {
       
       if (routingTable[destination][i].nexthop == next_hop) {
+	sprintf(debugMsg, "[addNewPath()] Found a route at i=%u\n",i);      
+	printDebugMessage(debugMsg);
+      
 	// if the exact same path and metric already exists, do nothing
 	if (routingTable[destination][i].hop_count == hop_count &&
-	    routingTable[destination][i].link_quality == link_quality)
+	    routingTable[destination][i].link_quality == link_quality){
+	  sprintf(debugMsg, "[addNewPath()] Ignoring update because of same metric and path\n");      
+	  printDebugMessage(debugMsg);
 	  return;
-	
+	}
 	// else if the metric has changed 
 	// check if the new metric is acceptable (link quality is above a certain threshold)
 	// otherwise discard it
 	if (link_quality < MIN_LINK_QUALITY) {
+	  
+	  sprintf(debugMsg, "[addNewPath()] Removing because the link quality was unacceptable\n");      
+	  printDebugMessage(debugMsg);
 	  removeFromRoutingTable(destination, next_hop);
 	  return;
 	}
@@ -438,41 +478,48 @@ implementation {
       }
     }
 
+
+    sprintf(debugMsg, "[addNewPath()] routeFound = %s\n",routeFound?"TRUE":"FALSE");      
+    printDebugMessage(debugMsg);
+    
     if (routeFound) {
       // update the existing metric and re-order the paths
       routingTable[destination][i].hop_count = hop_count;
       routingTable[destination][i].link_quality = link_quality;
       
       // find the first path (j) with a worse metric than this (i) 
-      for (j = 0; j < noOfRoutes[destination] && j != i; j++)
+      for (j = 0; j < noOfRoutes[destination] && j != i; j++) {
 	if (isPathBetter(routingTable[destination][i].hop_count, routingTable[destination][j].hop_count,
-			  routingTable[destination][i].link_quality, routingTable[destination][j].link_quality)) {
+	    routingTable[destination][i].link_quality, routingTable[destination][j].link_quality)) {
 	  found = TRUE;
+	  sprintf(debugMsg, "[addNewPath()] First position with a worse metric=%u\n",j);      
+	  printDebugMessage(debugMsg);
 	  break;
 	}
-	  
+      }
+      
       if (found) {
 	// re-order the paths according to metric
 	aux = routingTable[destination][i];
       
 	// if the route must be promoted
-	if (i > j) {
+	if (j < i) {
 	  // move j...i-1 to the right
-	  for (k = i - 1; k > j; k--)
-	    routingTable[destination][k + 1] = routingTable[destination][k];
+	  for (k = i; k > j; k--)
+	    routingTable[destination][k] = routingTable[destination][k-1];
 	  
 	  // insert i in j
 	  routingTable[destination][j] = aux;
 	}
 	else {  // if the route must be degraded
-	  // move i+1...j-1 to the left
-	  for (k = i + 1; k < j; k++)
-	    routingTable[destination][k - 1] = routingTable[destination][k];
-	  // insert i in j-1
-	  routingTable[destination][j - 1] = aux;
+	    //Note if i = j-1 they are already in correct position nothing to do, hence "for" loop skipped
+	    // move i+1...j-1 to the left
+	    for (k = i + 1; k < j; k++)
+	      routingTable[destination][k - 1] = routingTable[destination][k];
+	    // insert i in j-1
+	    routingTable[destination][j-1] = aux;
 	}
       }
-      
       else {                   // this is the route with the worst metric, move it to the end and promote all before it
 	aux = routingTable[destination][i];
 	for (k = i; k < noOfRoutes[destination] - 1; k++)
@@ -497,10 +544,12 @@ implementation {
       if (found) {
 	if (noOfRoutes[destination] < MAX_NUM_RECORDS)
 	  noOfRoutes[destination]++;
+	//else return; // Alterntive routes are already full
 
-	// shift all routes from j... one position down (if there is no more space, the last will be overwritten)
-	for (k = j; k < noOfRoutes[destination]; k++)
-	  routingTable[destination][k + 1] = routingTable[destination][k];
+	// shift all routes from j... one position down 
+	// (if there is no more space, the last will be overwritten)
+	for (k = noOfRoutes[destination]-1; k < j; k--)
+	  routingTable[destination][k] = routingTable[destination][k-1];
 
 	// insert the new route into the j position
 	routingTable[destination][j].node_id = destination;
@@ -524,7 +573,9 @@ implementation {
 	}
       }
     }
-    
+    printRoutingTable(destination);  
+    sprintf(debugMsg, "[addNewPath()] ******** END\n");      
+    printDebugMessage(debugMsg);
   }
 
    /**
@@ -544,17 +595,15 @@ implementation {
     
     if (new_hop_count < old_hop_count)
       return TRUE;
-    
-    if (new_hop_count > old_hop_count)
+    else if /*(new_hop_count > old_hop_count)
       return FALSE;
-    
-    if (new_link_quality > old_link_quality)
+    else if */(new_link_quality > old_link_quality)
       return TRUE;
-
+/*
     if (new_link_quality < old_link_quality)
+      return FALSE;*/
+    else
       return FALSE;
-
-    return FALSE;
   }
     
 
@@ -566,25 +615,27 @@ implementation {
   */
   void removeFromRoutingTable(uint8_t destination, uint8_t next_hop){
     uint8_t i, j;
-    boolean routeFound = FALSE;
+    bool routeFound = FALSE;
     
     for (i = 0; i < noOfRoutes[destination]; i++)
       if (routingTable[destination][i].nexthop == next_hop) {
 	routeFound = TRUE;
+	//sprintf(debugMsg, "[removeFromRoutingTable()] For i=%u routeFound\n",i);      
+	//printDebugMessage(debugMsg);
 	break;
       }
       
     if (routeFound) {                        // remove route at index i
       for (j = i; j < noOfRoutes[destination] - 1; j++)
 	routingTable[destination][i] = routingTable[destination][i + 1];
-      noOfRoutes[destination]--;
+	noOfRoutes[destination]--;
       
       if (noOfRoutes[destination] == 0)
 	// if there are no more routes to destination also remove all routes which have destination as their next hop
 	for (i = 0; i < MAX_MOTES && i != destination; i++)
 	  removeFromRoutingTable(i, destination);
       
-      sprintf(debugMsg, "[TimerNeighborsAlive.fired()] Neighbour=%u removed due to timeout\n",destination);      
+      sprintf(debugMsg, "[removeFromRoutingTable()] Neighbour=%u removed due to timeout\n",destination);      
       printDebugMessage(debugMsg);
       
       /// TODO transmit routing update at topology change
