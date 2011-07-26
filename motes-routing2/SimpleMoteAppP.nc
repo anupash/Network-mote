@@ -150,11 +150,10 @@ implementation {
   * Choose next available path for sending a packet to a destination
   * 
   * @param destination The destination to which th packet should be sent
-  * @param counter Identifies the alternative route to be used
   * 
   * @return true if there was an available path to choose, false otherwise
   */
-  bool chooseNextAvailablePath(uint8_t destination, uint8_t counter);
+  bool chooseNextAvailablePath(uint8_t destination);
   
   
   /*********/
@@ -172,7 +171,7 @@ implementation {
       case AM_IP: 
 	if (!IPRadioBusy) {
 	  // request acknowledgement for the packet to be sent
-      //     call PacketAcknowledgements.requestAck(&sR_m);
+          call PacketAcknowledgements.requestAck(&sR_m);
 	  
 	  if (call IPRadioSend.send(sR_dest, &sR_m, sR_len) == SUCCESS) {
 	    IPRadioBusy = TRUE;
@@ -422,6 +421,7 @@ implementation {
 
     uint8_t i;
     uint8_t myID;
+    bool ignore = FALSE;
     
     uint8_t senderNodeId = routingUpdateMsg->node_id;
     uint8_t noOfRoutesUpdate = routingUpdateMsg->num_of_records;
@@ -435,6 +435,17 @@ implementation {
     
     myID = TOS_NODE_ID == 254 ? 0 : TOS_NODE_ID;
 
+    ignore =  (TOS_NODE_ID == 1 && senderNodeId == 0) ||
+// 	      (TOS_NODE_ID == 1 && senderNodeId == 3) ||
+	      (TOS_NODE_ID == 2 && senderNodeId == 3) ||
+	      (TOS_NODE_ID == 3 && senderNodeId == 2) ||
+	      (TOS_NODE_ID == 254 && senderNodeId == 1)
+// 	      (TOS_NODE_ID == 254 && senderNodeId == 2);
+	      ;
+    
+    if (ignore)
+      return;
+    
     // add the sending node as a neighbor
     addNewPath(senderNodeId, sourceAddr, senderNodeId, 1, linkQuality);
     
@@ -667,17 +678,18 @@ implementation {
   * Choose next available path for sending a packet to a destination
   * 
   * @param destination The destination to which th packet should be sent
-  * @param counter Identifies the alternative route to be used
   * 
   * @return true if there was an available path to choose, false otherwise
   */
-  bool chooseNextAvailablePath(uint8_t destination, uint8_t counter) {
+  bool chooseNextAvailablePath(uint8_t destination) {
     
-    if (noOfRoutes[destination] <= counter)
+    // delete current best route
+    removeFromRoutingTable(destination, routingTable[destination][0].nexthop);
+
+    // set task parameter according to the new next hop
+    if (noOfRoutes[destination] <= 0)
       return FALSE;
-    
-    // otherwise select the next hop at routingTable[destination][counter] and set task parameter accordingly
-    sR_dest = routingTable[destination][counter].nexthop;  
+    sR_dest = routingTable[destination][0].nexthop;  
     
     return TRUE;
   }
@@ -803,11 +815,11 @@ implementation {
       IPRadioBusy = FALSE;
       call Leds.led0Toggle();
       // if the packet was sent but not acknowledged, it will be resent using the next available path (maximum 2 times)
-/*      if (!call PacketAcknowledgements.wasAcked(m) && retransmissionCounter < MAX_RETRANSMISSIONS) {
+      if (!call PacketAcknowledgements.wasAcked(m) && retransmissionCounter < MAX_RETRANSMISSIONS) {
 	retransmissionCounter++;
-	if (chooseNextAvailablePath(sR_payload.destination, retransmissionCounter)) 
+	if (chooseNextAvailablePath(sR_payload.destination)) 
 	  post sendRadio();
-      }*/
+      }
 	
 //	radioBlink();
 //	printf("IP Packet sent successfully from %u to %u \n",TOS_NODE_ID,sR_dest);
