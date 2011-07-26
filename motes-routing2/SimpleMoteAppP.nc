@@ -381,6 +381,7 @@ implementation {
   void forwardPacket(message_t* msg, myPacketHeader* myph, uint8_t len) {
     
     am_addr_t nextHopAddress = 0;
+    uint8_t myDestination;
 
     // If this mote is a node attatched to a PC, set the correct destination.
     if(TOS_NODE_ID == 1) myph->destination = 254;
@@ -389,9 +390,12 @@ implementation {
     //sprintf(debugMsg, "[forwardPacket] At node= %u destination received = %u ", TOS_NODE_ID, myph->destination);
     //printDebugMessage(debugMsg);
 
-    // resolve next hop for destination
-    if (noOfRoutes[myph->destination] > 0) {
-      nextHopAddress = routingTable[myph->destination][0].nexthop;
+    // destination for looking up in the routing table
+    myDestination = myph->destination == 254 ? 0 : myph->destination;
+    
+    // resolve next hop for destination (take into account the conversion from routing table to normal representation for gateway)
+    if (noOfRoutes[myDestination] > 0) {
+      nextHopAddress = routingTable[myDestination][0].nexthop == 0 ? 254 : routingTable[myDestination][0].nexthop;
       call Leds.led2Toggle();
     }
     else
@@ -797,7 +801,7 @@ implementation {
       
     if (err == SUCCESS) {
       IPRadioBusy = FALSE;
-//       call Leds.led0Toggle();
+      call Leds.led0Toggle();
       // if the packet was sent but not acknowledged, it will be resent using the next available path (maximum 2 times)
 /*      if (!call PacketAcknowledgements.wasAcked(m) && retransmissionCounter < MAX_RETRANSMISSIONS) {
 	retransmissionCounter++;
