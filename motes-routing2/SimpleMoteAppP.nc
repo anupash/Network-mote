@@ -382,8 +382,10 @@ implementation {
     //printDebugMessage(debugMsg);
 
     // resolve next hop for destination
-    if (noOfRoutes[myph->destination] > 0)
+    if (noOfRoutes[myph->destination] > 0) {
       nextHopAddress = routingTable[myph->destination][0].nexthop;
+      call Leds.led1Toggle();
+    }
     else
       return;                      // drop the packet if there is no route for its destination
     
@@ -412,8 +414,8 @@ implementation {
     uint8_t noOfRoutesUpdate = routingUpdateMsg->num_of_records;
     routing_record_t* updateRecords = routingUpdateMsg->records;
     
-    if((TOS_NODE_ID == 1 && senderNodeId == 254) || (TOS_NODE_ID == 254 && senderNodeId == 1))
-      return;
+/*    if((TOS_NODE_ID == 1 && senderNodeId == 254) || (TOS_NODE_ID == 254 && senderNodeId == 1))
+      return;*/
     
     //DEBUG
     call Leds.led0Toggle();
@@ -426,7 +428,7 @@ implementation {
     
     // then process the routing update records one by one
     for (i = 0; i < noOfRoutesUpdate; i++){
-      addNewPath(updateRecords[i].node_id, updateRecords[i].node_addr /*TODO transmit it or leave it out - not correct*/, senderNodeId, updateRecords[i].hop_count + 1, (updateRecords[i].link_quality + linkQuality) / (updateRecords[i].hop_count + 1));
+//       addNewPath(updateRecords[i].node_id, updateRecords[i].node_addr /*TODO transmit it or leave it out - not correct*/, senderNodeId, updateRecords[i].hop_count + 1, (updateRecords[i].link_quality + linkQuality) / (updateRecords[i].hop_count + 1));
     }
     
   }
@@ -464,6 +466,7 @@ implementation {
 	    routingTable[destination][i].link_quality == link_quality){
 	  ////sprintf(debugMsg, "[addNewPath()] Ignoring update because of same metric and path\n");      
 	  //printDebugMessage(debugMsg);
+	  routingTable[destination][i].timeout = MAX_TIMEOUT;
 	  return;
 	}
 	// else if the metric has changed 
@@ -473,7 +476,7 @@ implementation {
 	  
 	  //sprintf(debugMsg, "[addNewPath()] Removing because the link quality was unacceptable\n");      
 	  //printDebugMessage(debugMsg);
-	  removeFromRoutingTable(destination, next_hop);
+// 	  removeFromRoutingTable(destination, next_hop);
 	  return;
 	}
 	
@@ -487,9 +490,13 @@ implementation {
     //printDebugMessage(debugMsg);
     
     if (routeFound) {
+      
+      call Leds.led1Toggle();
+      
       // update the existing metric and re-order the paths
       routingTable[destination][i].hop_count = hop_count;
       routingTable[destination][i].link_quality = link_quality;
+      routingTable[destination][i].timeout = MAX_TIMEOUT;
       
       // find the first path (j) with a worse metric than this (i) 
       for (j = 0; j < noOfRoutes[destination] && j != i; j++) {
@@ -536,6 +543,8 @@ implementation {
     // else the route wasn't found, so it will be added according to metric
     else {
       
+      call Leds.led2Toggle();
+      
       // find the first path (j) with a worse metric than the new one 
       for (j = 0, found = FALSE; j < noOfRoutes[destination]; j++)
 	if (isPathBetter(hop_count, routingTable[destination][j].hop_count,
@@ -567,7 +576,7 @@ implementation {
       else {
 	// insert new route into the last position if there is still space
 	if (noOfRoutes[destination] < MAX_NUM_RECORDS) {
-	  noOfRoutes[destination]++;
+	  noOfRoutes[destination]++;	
 	  routingTable[destination][noOfRoutes[destination] - 1].node_id = destination;
 	  routingTable[destination][noOfRoutes[destination] - 1].node_addr = destination_addr;
 	  routingTable[destination][noOfRoutes[destination] - 1].hop_count = hop_count;
