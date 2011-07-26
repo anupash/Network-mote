@@ -166,13 +166,14 @@ implementation {
   */
   task void sendRadio(){
       
-    // request acknowledgement for the packet to be sent
-    call PacketAcknowledgements.requestAck(&sR_m);
     
     switch (sR_type) {
       
       case AM_IP: 
 	if (!IPRadioBusy) {
+	  // request acknowledgement for the packet to be sent
+      //     call PacketAcknowledgements.requestAck(&sR_m);
+	  
 	  if (call IPRadioSend.send(sR_dest, &sR_m, sR_len) == SUCCESS) {
 	    IPRadioBusy = TRUE;
 	    
@@ -391,7 +392,7 @@ implementation {
     // resolve next hop for destination
     if (noOfRoutes[myph->destination] > 0) {
       nextHopAddress = routingTable[myph->destination][0].nexthop;
-      call Leds.led1Toggle();
+      call Leds.led2Toggle();
     }
     else
       return;                      // drop the packet if there is no route for its destination
@@ -424,9 +425,6 @@ implementation {
     
 /*    if((TOS_NODE_ID == 1 && senderNodeId == 254) || (TOS_NODE_ID == 254 && senderNodeId == 1))
       return;*/
-    
-    //DEBUG
-    call Leds.led0Toggle();
     
     if (senderNodeId == 254)
       senderNodeId = 0;
@@ -500,8 +498,6 @@ implementation {
     
     if (routeFound) {
       
-//       call Leds.led1Toggle();
-      
       // update the existing metric and re-order the paths
       routingTable[destination][i].hop_count = hop_count;
       routingTable[destination][i].link_quality = link_quality;
@@ -551,8 +547,6 @@ implementation {
 
     // else the route wasn't found, so it will be added according to metric
     else {
-      
-      call Leds.led2Toggle();
       
       // find the first path (j) with a worse metric than the new one 
       for (j = 0, found = FALSE; j < noOfRoutes[destination]; j++)
@@ -803,13 +797,13 @@ implementation {
       
     if (err == SUCCESS) {
       IPRadioBusy = FALSE;
-      
+//       call Leds.led0Toggle();
       // if the packet was sent but not acknowledged, it will be resent using the next available path (maximum 2 times)
-      if (!call PacketAcknowledgements.wasAcked(m) && retransmissionCounter < MAX_RETRANSMISSIONS) {
+/*      if (!call PacketAcknowledgements.wasAcked(m) && retransmissionCounter < MAX_RETRANSMISSIONS) {
 	retransmissionCounter++;
 	if (chooseNextAvailablePath(sR_payload.destination, retransmissionCounter)) 
 	  post sendRadio();
-      }
+      }*/
 	
 //	radioBlink();
 //	printf("IP Packet sent successfully from %u to %u \n",TOS_NODE_ID,sR_dest);
@@ -830,7 +824,7 @@ implementation {
 
     if (err == SUCCESS)
       routingRadioBusy = FALSE;
-//	radioBlink();
+// 	radioBlink();
 //	printf("Routing update sent successfully from %u to %u \n",TOS_NODE_ID,sR_dest);
     else
       if (err == EBUSY)
@@ -848,13 +842,14 @@ implementation {
       myPacketHeader *myph;
       am_addr_t source;
 
-     // Discard if not a valid message
-      if(call AMPacket.type(m) != AM_IP){
+      // DEBUG
+      call Leds.led1Toggle();
+
+      // Discard if not a valid message
+      if (call AMPacket.type(m) != AM_IP) {
 	return m;
       }
 
-      // DEBUG
-      call Leds.led1Toggle();
  
       myph = (myPacketHeader*) payload;
       source = myph->sender;
