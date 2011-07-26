@@ -336,23 +336,30 @@ implementation {
 
  /**
   * Function for sending the routing updates to the neighbors
+  * It only sends existing routes from the routing table (not MAX_MOTES extries)
   */
   void sendRoutingUpdate() {
     uint8_t i;
+    uint8_t noOfRoutesUpdate = 0;
     routing_update_t* r_update_pkt = (routing_update_t*)(call Packet.getPayload(&pkt, sizeof(routing_update_t)));
     
     r_update_pkt->node_id = TOS_NODE_ID;
-    ///TODO decide on the number of records - if MAX_MOTES, then lower the value, otherwise it will not be transmitted
-    r_update_pkt->num_of_records = MAX_MOTES;			
     
     // add best routes from the routing table
     for (i = 0; i < MAX_MOTES; i++) {
-      r_update_pkt->records[i].node_id = routingTable[i][0].node_id;
-      r_update_pkt->records[i].node_addr = routingTable[i][0].node_addr;
-      r_update_pkt->records[i].hop_count = routingTable[i][0].hop_count;
-      r_update_pkt->records[i].link_quality = routingTable[i][0].link_quality;
+      if (noOfRoutes[i] > 0) {
+	r_update_pkt->records[noOfRoutesUpdate].node_id = routingTable[i][0].node_id;
+	r_update_pkt->records[noOfRoutesUpdate].node_addr = routingTable[i][0].node_addr;
+	r_update_pkt->records[noOfRoutesUpdate].hop_count = routingTable[i][0].hop_count;
+	r_update_pkt->records[noOfRoutesUpdate].link_quality = routingTable[i][0].link_quality;
+	noOfRoutesUpdate++;
+      }
     }
-    
+
+    ///TODO decide on the number of records - if MAX_MOTES, then lower the value, otherwise it will not be transmitted
+    r_update_pkt->num_of_records = noOfRoutesUpdate;			
+
+
     // broadcast the routing updates over the radio
     sR_dest = AM_BROADCAST_ADDR;
     sR_m = pkt;
@@ -426,10 +433,13 @@ implementation {
     // add the sending node as a neighbor
     addNewPath(senderNodeId, sourceAddr, senderNodeId, 1, linkQuality);
     
+    if (noOfRoutesUpdate == 1)
+      call Leds.led1Toggle();
+    
     // then process the routing update records one by one
-    for (i = 0; i < noOfRoutesUpdate; i++){
-//       addNewPath(updateRecords[i].node_id, updateRecords[i].node_addr /*TODO transmit it or leave it out - not correct*/, senderNodeId, updateRecords[i].hop_count + 1, (updateRecords[i].link_quality + linkQuality) / (updateRecords[i].hop_count + 1));
-    }
+    for (i = 0; i < noOfRoutesUpdate; i++)
+      if (i != TOS_NODE_ID)
+	addNewPath(updateRecords[i].node_id, updateRecords[i].node_addr, senderNodeId, updateRecords[i].hop_count + 1, (updateRecords[i].link_quality + linkQuality) / (updateRecords[i].hop_count + 1));
     
   }
     
@@ -476,7 +486,7 @@ implementation {
 	  
 	  //sprintf(debugMsg, "[addNewPath()] Removing because the link quality was unacceptable\n");      
 	  //printDebugMessage(debugMsg);
-// 	  removeFromRoutingTable(destination, next_hop);
+	  removeFromRoutingTable(destination, next_hop);
 	  return;
 	}
 	
@@ -491,7 +501,7 @@ implementation {
     
     if (routeFound) {
       
-      call Leds.led1Toggle();
+//       call Leds.led1Toggle();
       
       // update the existing metric and re-order the paths
       routingTable[destination][i].hop_count = hop_count;
@@ -499,9 +509,9 @@ implementation {
       routingTable[destination][i].timeout = MAX_TIMEOUT;
       
       // find the first path (j) with a worse metric than this (i) 
-      for (j = 0; j < noOfRoutes[destination] && j != i; j++) {
-	if (isPathBetter(routingTable[destination][i].hop_count, routingTable[destination][j].hop_count,
-	    routingTable[destination][i].link_quality, routingTable[destination][j].link_quality)) {
+      for (j = 0; j < noOfRoutes[destination]; j++) {
+	if (j != i && isPathBetter(routingTable[destination][i].hop_count, routingTable[destination][j].hop_count,
+				  routingTable[destination][i].link_quality, routingTable[destination][j].link_quality)) {
 	  found = TRUE;
 	  //sprintf(debugMsg, "[addNewPath()] First position with a worse metric=%u\n",j);      
 	  //printDebugMessage(debugMsg);
@@ -645,8 +655,9 @@ implementation {
       
       if (noOfRoutes[destination] == 0)
 	// if there are no more routes to destination also remove all routes which have destination as their next hop
-	for (i = 0; i < MAX_MOTES && i != destination; i++)
-	  removeFromRoutingTable(i, destination);
+	for (i = 0; i < MAX_MOTES; i++)
+	  if (i != destination)
+	    removeFromRoutingTable(i, destination);
       
       //sprintf(debugMsg, "[removeFromRoutingTable()] Neighbour=%u removed due to timeout\n",destination);      
       //printDebugMessage(debugMsg);
