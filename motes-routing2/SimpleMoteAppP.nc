@@ -416,6 +416,7 @@ implementation {
   void processRoutingUpdate(routing_update_t* routingUpdateMsg, am_addr_t sourceAddr, int8_t linkQuality) {
 
     uint8_t i;
+    uint8_t myID;
     
     uint8_t senderNodeId = routingUpdateMsg->node_id;
     uint8_t noOfRoutesUpdate = routingUpdateMsg->num_of_records;
@@ -429,18 +430,16 @@ implementation {
     
     if (senderNodeId == 254)
       senderNodeId = 0;
+    
+    myID = TOS_NODE_ID == 254 ? 0 : TOS_NODE_ID;
 
     // add the sending node as a neighbor
     addNewPath(senderNodeId, sourceAddr, senderNodeId, 1, linkQuality);
     
-    if (noOfRoutesUpdate == 1)
-      call Leds.led1Toggle();
-    
     // then process the routing update records one by one
     for (i = 0; i < noOfRoutesUpdate; i++)
-      if (i != TOS_NODE_ID)
+      if (updateRecords[i].node_id != myID)
 	addNewPath(updateRecords[i].node_id, updateRecords[i].node_addr, senderNodeId, updateRecords[i].hop_count + 1, (updateRecords[i].link_quality + linkQuality) / (updateRecords[i].hop_count + 1));
-    
   }
     
 
