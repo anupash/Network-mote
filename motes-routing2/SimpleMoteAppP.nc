@@ -817,7 +817,7 @@ implementation {
     routing_update_t* receivedRoutingUpdate;
 
     // Discard if not a valid message
-    if (len != sizeof(routing_update_t)  || call AMPacket.type(m) != AM_ROUTING_UPDATE)
+    if (call AMPacket.type(m) != AM_ROUTING_UPDATE)
       return m;
     
     receivedRoutingUpdate = (routing_update_t*) payload;
