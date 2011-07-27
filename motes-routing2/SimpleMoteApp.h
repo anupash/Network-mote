@@ -80,18 +80,15 @@ enum {
 
 // routing table entry type
 typedef nx_struct routing_table {
-    nx_uint8_t node_id;
-    nx_am_addr_t node_addr;
     nx_uint8_t hop_count;
     nx_int8_t link_quality;
-    nx_am_addr_t nexthop;
+    nx_am_addr_t next_hop;
     nx_uint8_t timeout;
 } routing_table_t;
 
 // routing update entry type
 typedef nx_struct routing_record {
     nx_uint8_t node_id;
-    nx_am_addr_t node_addr;
     nx_uint8_t hop_count;
     nx_int8_t link_quality;
 } routing_record_t;

@@ -106,12 +106,11 @@ implementation {
   * Add a new path to a certain destination in the routingTable
   * 
   * @param destination The destination for which a new path should be added 
-  * @param destination_addr The address of the destination
   * @param next_hop The next hop in the new path
   * @param hop_count The new hop count
   * @param link_quality The new link quality
   */
-  void addNewPath(uint8_t destination, am_addr_t destination_addr, uint8_t next_hop, uint8_t hop_count, int8_t link_quality);
+  void addNewPath(uint8_t destination, uint8_t next_hop, uint8_t hop_count, int8_t link_quality);
   
   /**
   * Test if one path is better than the other
@@ -238,7 +237,7 @@ implementation {
   }
   
    /** 
-    * Test, whether an message signature is in the queue (was recently seen).
+    * Test, whether a message signature is in the queue (was recently seen).
     * 
     * @param client The TOS_NODE_ID. Should be smaller that MAX_MOTES!!!
     * @param seq_no The sequential number of the message.
@@ -308,8 +307,7 @@ implementation {
     // add best routes from the routing table
     for (i = 0; i < MAX_MOTES; i++) {
       if (noOfRoutes[i] > 0) {
-	r_update_pkt->records[noOfRoutesUpdate].node_id = routingTable[i][0].node_id;
-	r_update_pkt->records[noOfRoutesUpdate].node_addr = routingTable[i][0].node_addr;
+	r_update_pkt->records[noOfRoutesUpdate].node_id = i;
 	r_update_pkt->records[noOfRoutesUpdate].hop_count = routingTable[i][0].hop_count;
 	r_update_pkt->records[noOfRoutesUpdate].link_quality = routingTable[i][0].link_quality;
 	noOfRoutesUpdate++;
@@ -341,7 +339,7 @@ implementation {
     am_addr_t nextHopAddress = 0;
     uint8_t myDestination;
 
-    // If this mote is a node attatched to a PC, set the correct destination.
+    // If this mote is a node attached to a PC, set the correct destination.
     if (TOS_NODE_ID == 1) 
       myph->destination = 254;
     else 
@@ -352,10 +350,9 @@ implementation {
     myDestination = myph->destination == 254 ? 0 : myph->destination;
     
     // resolve next hop for destination (take into account the conversion from routing table to normal representation for gateway)
-    if (noOfRoutes[myDestination] > 0) {
-      nextHopAddress = routingTable[myDestination][0].nexthop == 0 ? 254 : routingTable[myDestination][0].nexthop;
-//       call Leds.led2Toggle();
-    }
+    if (noOfRoutes[myDestination] > 0)
+      nextHopAddress = routingTable[myDestination][0].next_hop == 0 ? 254 : routingTable[myDestination][0].next_hop;
+    
     else
       return;                      // drop the packet if there is no route for its destination
     
@@ -403,12 +400,12 @@ implementation {
       return;
     
     // add the sending node as a neighbor
-    addNewPath(senderNodeId, sourceAddr, senderNodeId, 1, linkQuality);
+    addNewPath(senderNodeId, senderNodeId, 1, linkQuality);
     
     // then process the routing update records one by one
     for (i = 0; i < noOfRoutesUpdate; i++)
       if (updateRecords[i].node_id != myID)
-	addNewPath(updateRecords[i].node_id, updateRecords[i].node_addr, senderNodeId, updateRecords[i].hop_count + 1, (updateRecords[i].link_quality + linkQuality) / (updateRecords[i].hop_count + 1));
+	addNewPath(updateRecords[i].node_id, senderNodeId, updateRecords[i].hop_count + 1, (updateRecords[i].link_quality + linkQuality) / (updateRecords[i].hop_count + 1));
   }
     
 
@@ -416,12 +413,11 @@ implementation {
     * Add a new path to a certain destination in the routingTable
     * 
     * @param destination The destination for which a new path should be added 
-    * @param destination_addr The address of the destination
     * @param next_hop The next hop in the new path
     * @param hop_count The new hop count
     * @param link_quality The new link quality
     */
-  void addNewPath(uint8_t destination, am_addr_t destination_addr, uint8_t next_hop, uint8_t hop_count, int8_t link_quality) {
+  void addNewPath(uint8_t destination, uint8_t next_hop, uint8_t hop_count, int8_t link_quality) {
     uint8_t i, j, k;
     routing_table_t aux;
     bool found = FALSE;
@@ -430,7 +426,7 @@ implementation {
     // first check if the new path already exists
     for (i = 0; i < noOfRoutes[destination]; i++) {
       
-      if (routingTable[destination][i].nexthop == next_hop) {
+      if (routingTable[destination][i].next_hop == next_hop) {
       
 	// if the exact same path and metric already exists, do nothing
 	if (routingTable[destination][i].hop_count == hop_count &&
@@ -525,11 +521,9 @@ implementation {
 	  routingTable[destination][k] = routingTable[destination][k-1];
 
 	// insert the new route into the j position
-	routingTable[destination][j].node_id = destination;
-	routingTable[destination][j].node_addr = destination_addr;
+	routingTable[destination][j].next_hop = next_hop;
 	routingTable[destination][j].hop_count = hop_count;
 	routingTable[destination][j].link_quality = link_quality;
-	routingTable[destination][j].nexthop = next_hop;
 	routingTable[destination][j].timeout = MAX_TIMEOUT;
       }
       
@@ -537,11 +531,9 @@ implementation {
 	// insert new route into the last position if there is still space
 	if (noOfRoutes[destination] < MAX_NUM_RECORDS) {
 	  noOfRoutes[destination]++;	
-	  routingTable[destination][noOfRoutes[destination] - 1].node_id = destination;
-	  routingTable[destination][noOfRoutes[destination] - 1].node_addr = destination_addr;
+	  routingTable[destination][noOfRoutes[destination] - 1].next_hop = next_hop;
 	  routingTable[destination][noOfRoutes[destination] - 1].hop_count = hop_count;
 	  routingTable[destination][noOfRoutes[destination] - 1].link_quality = link_quality;
-	  routingTable[destination][noOfRoutes[destination] - 1].nexthop = next_hop;
 	  routingTable[destination][noOfRoutes[destination] - 1].timeout = MAX_TIMEOUT;	
 	}
       }
@@ -585,7 +577,7 @@ implementation {
     bool routeFound = FALSE;
     
     for (i = 0; i < noOfRoutes[destination]; i++)
-      if (routingTable[destination][i].nexthop == next_hop) {
+      if (routingTable[destination][i].next_hop == next_hop) {
 	routeFound = TRUE;
 	break;
       }
@@ -614,12 +606,12 @@ implementation {
   bool chooseNextAvailablePath(uint8_t destination) {
     
     // delete current best route
-    removeFromRoutingTable(destination, routingTable[destination][0].nexthop);
+    removeFromRoutingTable(destination, routingTable[destination][0].next_hop);
 
     // set task parameter according to the new next hop
     if (noOfRoutes[destination] <= 0)
       return FALSE;
-    sR_dest = routingTable[destination][0].nexthop;  
+    sR_dest = routingTable[destination][0].next_hop;  
     
     return TRUE;
   }
