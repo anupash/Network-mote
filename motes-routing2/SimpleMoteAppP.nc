@@ -86,10 +86,8 @@ implementation {
   
   message_t pkt;
   
-  // whether Routing Radio is busy or available for transmission
-  bool routingRadioBusy; 
-  // whether IP Radio is busy or available for transmission
-  bool IPRadioBusy; 
+  // whether radio is busy or available for transmission
+  bool radioBusy; 
 
   /*************************/
   /* Function declarations */
@@ -159,12 +157,12 @@ implementation {
     switch (sR_type) {
       
       case AM_IP: 
-	if (!IPRadioBusy) {
+	if (!radioBusy) {
 	  // request acknowledgement for the packet to be sent
           call PacketAcknowledgements.requestAck(&sR_m);
 	  
 	  if (call IPRadioSend.send(sR_dest, &sR_m, sR_len) == SUCCESS) {
-	    IPRadioBusy = TRUE;
+	    radioBusy = TRUE;
 	  }
 	  else
 	    post sendRadio();
@@ -176,9 +174,9 @@ implementation {
 	break;
       
       case AM_ROUTING_UPDATE:
-	if (!routingRadioBusy) {
+	if (!radioBusy) {
 	  if (call RoutingRadioSend.send(sR_dest, &sR_m, sR_len) == SUCCESS) {
-	    routingRadioBusy = TRUE;
+	    radioBusy = TRUE;
 	  }
 	  else
 	    post sendRadio();
@@ -230,8 +228,7 @@ implementation {
     // initialize routing table variables
     for (i = 0; i < MAX_MOTES; i++)
       noOfRoutes[i] = 0;
-    routingRadioBusy = FALSE;
-    IPRadioBusy = FALSE;
+    radioBusy = FALSE;
 
     // start the timer for the routing updates
     call TimerRoutingUpdate.startPeriodic(5000);
@@ -745,11 +742,11 @@ implementation {
   event void IPRadioSend.sendDone(message_t* m, error_t err) {	
       
     if (err == SUCCESS) {
-      IPRadioBusy = FALSE;
+      radioBusy = FALSE;
       call Leds.led0Toggle();
       // if the packet was sent but not acknowledged, it will be resent using the next available path (maximum 2 times)
       if (!call PacketAcknowledgements.wasAcked(m) && retransmissionCounter < MAX_RETRANSMISSIONS) {
-// 	call Leds.led2Toggle();
+	call Leds.led2Toggle();
 	retransmissionCounter++;
 	if (chooseNextAvailablePath(sR_payload.destination)) 
 	  post sendRadio();
@@ -758,7 +755,7 @@ implementation {
 
     else 
       if (err == EBUSY)
-	IPRadioBusy = TRUE;
+	radioBusy = TRUE;
       else
 	failBlink();
   }
@@ -771,10 +768,10 @@ implementation {
   event void RoutingRadioSend.sendDone(message_t* m, error_t err){	
 
     if (err == SUCCESS)
-      routingRadioBusy = FALSE;
+      radioBusy = FALSE;
     else
       if (err == EBUSY)
-	routingRadioBusy = TRUE;
+	radioBusy = TRUE;
       else
 	failBlink();
   }
@@ -788,14 +785,13 @@ implementation {
       myPacketHeader *myph;
       am_addr_t source;
 
-      // DEBUG
-      call Leds.led1Toggle();
-
       // Discard if not a valid message
       if (call AMPacket.type(m) != AM_IP) {
 	return m;
       }
 
+      // DEBUG
+      call Leds.led1Toggle();
  
       myph = (myPacketHeader*) payload;
       source = myph->sender;
