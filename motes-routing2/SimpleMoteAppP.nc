@@ -72,9 +72,6 @@ implementation {
   message_t sS_m;
   uint8_t sS_len;
   
-  // Variables needed for debug purposes
-  // char debugMsg[100];
-  
   /*************************/
   /* Variables for routing */
   /*************************/
@@ -90,9 +87,9 @@ implementation {
   message_t pkt;
   
   // whether Routing Radio is busy or available for transmission
-  boolean routingRadioBusy; 
+  bool routingRadioBusy; 
   // whether IP Radio is busy or available for transmission
-  boolean IPRadioBusy; 
+  bool IPRadioBusy; 
 
   /*************************/
   /* Function declarations */
@@ -106,13 +103,6 @@ implementation {
   */
   void printDebugMessage(char* msg);
   
-  /**
-  * Print Routing Tables for debugging purposes
-  * 
-  * @param destination Node for which the alternative paths has to be printed
-  * 
-  */
-  void printRoutingTable(uint8_t mote);
   
   /**
   * Add a new path to a certain destination in the routingTable
@@ -135,7 +125,7 @@ implementation {
   * 
   * @return Return if the new path is better than the old one
   */
-  boolean isPathBetter(uint8_t new_hop_count, uint8_t old_hop_count, int8_t new_link_quality, int8_t old_link_quality);
+  bool isPathBetter(uint8_t new_hop_count, uint8_t old_hop_count, int8_t new_link_quality, int8_t old_link_quality);
   
   /**
   * Removing an entry from the routing table
@@ -175,9 +165,6 @@ implementation {
 	  
 	  if (call IPRadioSend.send(sR_dest, &sR_m, sR_len) == SUCCESS) {
 	    IPRadioBusy = TRUE;
-	    
-	    //sprintf(debugMsg, "[sendRadio] AM_IP sent from %u to %u\n",TOS_NODE_ID, sR_dest);
-	    //printDebugMessage(debugMsg);
 	  }
 	  else
 	    post sendRadio();
@@ -192,9 +179,6 @@ implementation {
 	if (!routingRadioBusy) {
 	  if (call RoutingRadioSend.send(sR_dest, &sR_m, sR_len) == SUCCESS) {
 	    routingRadioBusy = TRUE;
-	    
-	    //sprintf(debugMsg, "[sendRadio] AM_ROUTING_UPDATE sent from %u to %u\n",TOS_NODE_ID,sR_dest);
-	    //printDebugMessage(debugMsg);
 	  }
 	  else
 	    post sendRadio();
@@ -237,25 +221,6 @@ implementation {
   }
    
    
-  /**
-    * Print Routing Tables for debugging purposes
-    * 
-    * @param mote Node for which the alternative paths has to be printed
-    * 
-  */
-  void printRoutingTable(uint8_t mote){
-    uint8_t i;
-   // char route[100];
-    //printf("noOfRoutes = %u \n",noOfRoutes[mote]);
-    for(i=0; i < noOfRoutes[mote]; i++){
-      //printf(" %u, %u, %u|", routingTable[mote][i].nexthop, routingTable[mote][i].hop_count, routingTable[mote][i].link_quality);
-    }
-    //sprintf(route,"RT\n");
-    //printf("]\n");
-    //printDebugMessage(route);
-    //printfflush();
-  }
-  
    /**
     * Initialize variables and timers of the routing module
     */
@@ -273,7 +238,6 @@ implementation {
     
     // start timer for checking dead neighbors
     call TimerNeighborsAlive.startPeriodic(1000);
-    //printfflush();
   }
   
    /** 
@@ -285,26 +249,25 @@ implementation {
     * 
     * @return 1, if the signature is contained, 0 otherwise.
     */
-  boolean inQueue(am_addr_t client, seq_no_t seq_no, uint8_t ord_no){
+  bool inQueue(am_addr_t client, seq_no_t seq_no, uint8_t ord_no){
       uint8_t i;
       uint16_t identifier;
 
       // Build identifier from seq_nr and ord_nr
       identifier = (((uint16_t) seq_no) << 8) | ord_no;
 
-      //Position 0 of the queue reserved for the Gateway
-      //THis is done because the size of queue limited to MAX_MOTES
+      // Position 0 of the queue reserved for the Gateway
+      // This is done because the size of queue is limited to MAX_MOTES
       if (client == 254) client = 0;
-      
       
       // Just loop over all elements
       for(i = 0; i < PACKET_QUEUE_SIZE; i++){
 	  if(queues[client][i] == identifier){
-	      return 1;
+	      return TRUE;
 	  }
       }
       
-      return 0;
+      return FALSE;
   }
 
    /** 
@@ -320,8 +283,8 @@ implementation {
       // Build identifier from seq_nr and ord_nr
       identifier = (((uint16_t) seq_no) << 8) | ord_no;
 
-      //Position 0 of the queue reserved for the Gateway
-      //THis is done because the size of queue limited to MAX_MOTES
+      // Position 0 of the queue reserved for the Gateway
+      // This is done because the size of queue limited to MAX_MOTES
       if (client == 254) client = 0;
 
       if(heads[client] == &queues[client][PACKET_QUEUE_SIZE - 1]){
@@ -359,7 +322,6 @@ implementation {
     ///TODO decide on the number of records - if MAX_MOTES, then lower the value, otherwise it will not be transmitted
     r_update_pkt->num_of_records = noOfRoutesUpdate;			
 
-
     // broadcast the routing updates over the radio
     sR_dest = AM_BROADCAST_ADDR;
     sR_m = pkt;
@@ -383,19 +345,19 @@ implementation {
     uint8_t myDestination;
 
     // If this mote is a node attatched to a PC, set the correct destination.
-    if(TOS_NODE_ID == 1) myph->destination = 254;
-    else if (TOS_NODE_ID == 254 ) myph->destination = 1;
+    if (TOS_NODE_ID == 1) 
+      myph->destination = 254;
+    else 
+      if (TOS_NODE_ID == 254) 
+	myph->destination = 1;
     
-    //sprintf(debugMsg, "[forwardPacket] At node= %u destination received = %u ", TOS_NODE_ID, myph->destination);
-    //printDebugMessage(debugMsg);
-
     // destination for looking up in the routing table
     myDestination = myph->destination == 254 ? 0 : myph->destination;
     
     // resolve next hop for destination (take into account the conversion from routing table to normal representation for gateway)
     if (noOfRoutes[myDestination] > 0) {
       nextHopAddress = routingTable[myDestination][0].nexthop == 0 ? 254 : routingTable[myDestination][0].nexthop;
-      call Leds.led2Toggle();
+//       call Leds.led2Toggle();
     }
     else
       return;                      // drop the packet if there is no route for its destination
@@ -426,9 +388,6 @@ implementation {
     uint8_t senderNodeId = routingUpdateMsg->node_id;
     uint8_t noOfRoutesUpdate = routingUpdateMsg->num_of_records;
     routing_record_t* updateRecords = routingUpdateMsg->records;
-    
-/*    if((TOS_NODE_ID == 1 && senderNodeId == 254) || (TOS_NODE_ID == 254 && senderNodeId == 1))
-      return;*/
     
     if (senderNodeId == 254)
       senderNodeId = 0;
@@ -468,26 +427,17 @@ implementation {
   void addNewPath(uint8_t destination, am_addr_t destination_addr, uint8_t next_hop, uint8_t hop_count, int8_t link_quality) {
     uint8_t i, j, k;
     routing_table_t aux;
-    boolean found = FALSE;
-    boolean routeFound = FALSE;
-    
-    
-    //sprintf(debugMsg, "[addNewPath()] ******** destination=%u nexthop=%u hopcount=%u \n",destination, next_hop, hop_count);      
-    //printDebugMessage(debugMsg);
-    printRoutingTable(destination);
+    bool found = FALSE;
+    bool routeFound = FALSE;
     
     // first check if the new path already exists
     for (i = 0; i < noOfRoutes[destination]; i++) {
       
       if (routingTable[destination][i].nexthop == next_hop) {
-	//sprintf(debugMsg, "[addNewPath()] Found a route at i=%u\n",i);      
-	//printDebugMessage(debugMsg);
       
 	// if the exact same path and metric already exists, do nothing
 	if (routingTable[destination][i].hop_count == hop_count &&
 	    routingTable[destination][i].link_quality == link_quality){
-	  ////sprintf(debugMsg, "[addNewPath()] Ignoring update because of same metric and path\n");      
-	  //printDebugMessage(debugMsg);
 	  routingTable[destination][i].timeout = MAX_TIMEOUT;
 	  return;
 	}
@@ -495,9 +445,6 @@ implementation {
 	// check if the new metric is acceptable (link quality is above a certain threshold)
 	// otherwise discard it
 	if (link_quality < MIN_LINK_QUALITY) {
-	  
-	  //sprintf(debugMsg, "[addNewPath()] Removing because the link quality was unacceptable\n");      
-	  //printDebugMessage(debugMsg);
 	  removeFromRoutingTable(destination, next_hop);
 	  return;
 	}
@@ -506,10 +453,6 @@ implementation {
 	break;                     // same route is found but with different metric, stop searching further
       }
     }
-
-
-    //sprintf(debugMsg, "[addNewPath()] routeFound = %s\n",routeFound?"TRUE":"FALSE");      
-    //printDebugMessage(debugMsg);
     
     if (routeFound) {
       
@@ -519,12 +462,11 @@ implementation {
       routingTable[destination][i].timeout = MAX_TIMEOUT;
       
       // find the first path (j) with a worse metric than this (i) 
+      found = FALSE;
       for (j = 0; j < noOfRoutes[destination]; j++) {
 	if (j != i && isPathBetter(routingTable[destination][i].hop_count, routingTable[destination][j].hop_count,
 				  routingTable[destination][i].link_quality, routingTable[destination][j].link_quality)) {
 	  found = TRUE;
-	  //sprintf(debugMsg, "[addNewPath()] First position with a worse metric=%u\n",j);      
-	  //printDebugMessage(debugMsg);
 	  break;
 	}
       }
@@ -543,12 +485,11 @@ implementation {
 	  routingTable[destination][j] = aux;
 	}
 	else {  // if the route must be degraded
-	    //Note if i = j-1 they are already in correct position nothing to do, hence "for" loop skipped
-	    // move i+1...j-1 to the left
-	    for (k = i + 1; k < j; k++)
-	      routingTable[destination][k - 1] = routingTable[destination][k];
-	    // insert i in j-1
-	    routingTable[destination][j-1] = aux;
+	  // move i+1...j-1 to the left
+	  for (k = i + 1; k < j; k++)
+	    routingTable[destination][k - 1] = routingTable[destination][k];
+	  // insert i in j-1
+	  routingTable[destination][j-1] = aux;
 	}
       }
       else {                   // this is the route with the worst metric, move it to the end and promote all before it
@@ -563,8 +504,13 @@ implementation {
     // else the route wasn't found, so it will be added according to metric
     else {
       
+      // check if the link quality is acceptable
+      if (link_quality < MIN_LINK_QUALITY)
+	return;
+
       // find the first path (j) with a worse metric than the new one 
-      for (j = 0, found = FALSE; j < noOfRoutes[destination]; j++)
+      found = FALSE;
+      for (j = 0; j < noOfRoutes[destination]; j++)
 	if (isPathBetter(hop_count, routingTable[destination][j].hop_count,
 			 link_quality, routingTable[destination][j].link_quality)) {
 	  found = TRUE;
@@ -575,11 +521,10 @@ implementation {
       if (found) {
 	if (noOfRoutes[destination] < MAX_NUM_RECORDS)
 	  noOfRoutes[destination]++;
-	//else return; // Alterntive routes are already full
 
 	// shift all routes from j... one position down 
 	// (if there is no more space, the last will be overwritten)
-	for (k = noOfRoutes[destination]-1; k < j; k--)
+	for (k = noOfRoutes[destination]-1; k > j; k--)
 	  routingTable[destination][k] = routingTable[destination][k-1];
 
 	// insert the new route into the j position
@@ -604,9 +549,6 @@ implementation {
 	}
       }
     }
-    //printRoutingTable(destination);  
-    //sprintf(debugMsg, "[addNewPath()] ******** END\n");      
-    //printDebugMessage(debugMsg);
   }
 
    /**
@@ -622,19 +564,16 @@ implementation {
     * 
     * @return Return if the new path is better than the old one
     */
-  boolean isPathBetter(uint8_t new_hop_count, uint8_t old_hop_count, int8_t new_link_quality, int8_t old_link_quality) {
+  bool isPathBetter(uint8_t new_hop_count, uint8_t old_hop_count, int8_t new_link_quality, int8_t old_link_quality) {
     
     if (new_hop_count < old_hop_count)
       return TRUE;
-    else if /*(new_hop_count > old_hop_count)
+    else if (new_hop_count > old_hop_count)
       return FALSE;
-    else if */(new_link_quality > old_link_quality)
+    else if (new_link_quality > old_link_quality)
       return TRUE;
-/*
-    if (new_link_quality < old_link_quality)
-      return FALSE;*/
-    else
-      return FALSE;
+
+    return FALSE;
   }
     
 
@@ -651,24 +590,18 @@ implementation {
     for (i = 0; i < noOfRoutes[destination]; i++)
       if (routingTable[destination][i].nexthop == next_hop) {
 	routeFound = TRUE;
-	//sprintf(debugMsg, "[removeFromRoutingTable()] For i=%u routeFound\n",i);      
-	//printDebugMessage(debugMsg);
 	break;
       }
       
     if (routeFound) {                        // remove route at index i
       for (j = i; j < noOfRoutes[destination] - 1; j++)
-	routingTable[destination][i] = routingTable[destination][i + 1];
+	routingTable[destination][j] = routingTable[destination][j + 1];
 	noOfRoutes[destination]--;
       
       if (noOfRoutes[destination] == 0)
 	// if there are no more routes to destination also remove all routes which have destination as their next hop
 	for (i = 0; i < MAX_MOTES; i++)
-	  if (i != destination)
-	    removeFromRoutingTable(i, destination);
-      
-      //sprintf(debugMsg, "[removeFromRoutingTable()] Neighbour=%u removed due to timeout\n",destination);      
-      //printDebugMessage(debugMsg);
+	  removeFromRoutingTable(i, destination);
       
       /// TODO transmit routing update at topology change
     }
@@ -782,7 +715,6 @@ implementation {
       //post sendSerialAck();
 
       // Send the message over the radio to the specified destination
-      
       forwardPacket(m,(myPacketHeader*)payload, len);
       return m;
   }
@@ -796,6 +728,7 @@ implementation {
   event void RadioControl.startDone(error_t err){
       initRouting();
   }
+
    /** 
     * Called, when the radio module was stopped.
     * 
@@ -816,14 +749,13 @@ implementation {
       call Leds.led0Toggle();
       // if the packet was sent but not acknowledged, it will be resent using the next available path (maximum 2 times)
       if (!call PacketAcknowledgements.wasAcked(m) && retransmissionCounter < MAX_RETRANSMISSIONS) {
+// 	call Leds.led2Toggle();
 	retransmissionCounter++;
 	if (chooseNextAvailablePath(sR_payload.destination)) 
 	  post sendRadio();
       }
-	
-//	radioBlink();
-//	printf("IP Packet sent successfully from %u to %u \n",TOS_NODE_ID,sR_dest);
     }
+
     else 
       if (err == EBUSY)
 	IPRadioBusy = TRUE;
@@ -840,8 +772,6 @@ implementation {
 
     if (err == SUCCESS)
       routingRadioBusy = FALSE;
-// 	radioBlink();
-//	printf("Routing update sent successfully from %u to %u \n",TOS_NODE_ID,sR_dest);
     else
       if (err == EBUSY)
 	routingRadioBusy = TRUE;
@@ -870,10 +800,7 @@ implementation {
       myph = (myPacketHeader*) payload;
       source = myph->sender;
 
-      //sprintf(debugMsg, "[IPRadioReceive] from source = %u \n",source);
-      //printDebugMessage(debugMsg);
-      
-      // Test, whether this message is a duplicate
+      // Test whether this message is a duplicate
       if (!inQueue(source, myph->seq_no, myph->ord_no)) {
 	// Add this message to the queue of seen messages
 	addToQueue(source, myph->seq_no, myph->ord_no); 
@@ -905,13 +832,7 @@ implementation {
       if (len != sizeof(routing_update_t)  || call AMPacket.type(m) != AM_ROUTING_UPDATE)
 	return m;
       
-//       //DEBUG
-//       call Leds.led0Toggle();
-      
       source = call AMPacket.source(m);
-      
-      //sprintf(debugMsg, "[RoutingRadioReceive.receive] from source=%u \n",source);
-      //printDebugMessage(debugMsg);
       
       receivedRoutingUpdate = (routing_update_t*) payload;
       processRoutingUpdate(receivedRoutingUpdate, source, call CC2420Packet.getRssi(payload));
@@ -951,9 +872,5 @@ implementation {
 	  removeFromRoutingTable(i, j);
       }
   }
-  
-  
-  
-      
 
 }
