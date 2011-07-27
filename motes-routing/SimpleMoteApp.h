@@ -16,8 +16,8 @@
 /*
  * General definitions.
  */
-enum{
-    MAX_MOTES = 16
+enum {
+  MAX_MOTES = 10
 };
 
 /* 
@@ -25,17 +25,17 @@ enum{
  * Values are quite arbitrary right now.
  */
 enum {
-    AM_SIMPLE_RADIO = 15,
-    AM_SIMPLE_SERIAL = 0
+  AM_SIMPLE_RADIO = 15,
+  AM_SIMPLE_SERIAL = 0
 };
 
 /*
  * Queue sizes
  */
 enum {
-    RADIO_QUEUE_SIZE = 10,
-    SERIAL_QUEUE_SIZE = 10,
-    PACKET_QUEUE_SIZE = 16
+  RADIO_QUEUE_SIZE = 10,
+  SERIAL_QUEUE_SIZE = 10,
+  PACKET_QUEUE_SIZE = 16
 };
 
 typedef nx_uint8_t nx_seq_no_t;
@@ -55,5 +55,49 @@ typedef nx_struct myPacketHeader {
     // how many chunks in total
     nx_uint8_t parts;
 } myPacketHeader;
+
+
+/** Routing part **/
+/*
+ * General definitions.
+ */
+enum {
+  MAX_NUM_RECORDS = 8,
+  MAX_TIMEOUT = 15,
+  MAX_HOP_COUNT = 10,
+  MIN_LINK_QUALITY = -80, 
+  MAX_RETRANSMISSIONS = 3
+};
+
+/* 
+ * Types of messages for the routing module
+ */
+enum {
+  AM_ROUTING_UPDATE = 11,
+  AM_IP = 12
+};
+
+
+// routing table entry type
+typedef nx_struct routing_table {
+    nx_uint8_t hop_count;
+    nx_int8_t link_quality;
+    nx_am_addr_t next_hop;
+    nx_uint8_t timeout;
+} routing_table_t;
+
+// routing update entry type
+typedef nx_struct routing_record {
+    nx_uint8_t node_id;
+    nx_uint8_t hop_count;
+    nx_int8_t link_quality;
+} routing_record_t;
+
+// routing update type
+typedef nx_struct routing_update {
+    nx_uint8_t node_id;
+    nx_uint8_t num_of_records;
+    routing_record_t records[MAX_NUM_RECORDS];
+} routing_update_t; 
 
 #endif

@@ -13,6 +13,8 @@
  */
 
 #include "SimpleMoteApp.h"
+//#include "printf.h"
+
 
 configuration SimpleMoteAppC{
 }
@@ -25,18 +27,27 @@ implementation{
     SimpleMoteAppP.Boot -> MainC;
     SimpleMoteAppP.Leds -> LedsC;
 
-    // Radio components
+    // Radio components - IP packets
     components ActiveMessageC as Radio;
-    components new SendQueueC(RADIO_QUEUE_SIZE, sizeof(message_t)) as RadioQueue;
-    RadioQueue.LowSend -> Radio.AMSend[AM_SIMPLE_RADIO];
-    RadioQueue.AMPacket -> Radio;
-    RadioQueue.Packet -> Radio;
+    components new SendQueueC(RADIO_QUEUE_SIZE, sizeof(message_t)) as IPRadioQueue;
+    IPRadioQueue.LowSend -> Radio.AMSend[AM_IP];
+    IPRadioQueue.AMPacket -> Radio;
+    IPRadioQueue.Packet -> Radio;
 
+    // Radio components - IP packets
+/*    components new SendQueueC(RADIO_QUEUE_SIZE, sizeof(message_t)) as RoutingRadioQueue;
+    RoutingRadioQueue.LowSend -> Radio.AMSend[AM_ROUTING_UPDATE];
+    RoutingRadioQueue.AMPacket -> Radio;
+    RoutingRadioQueue.Packet -> Radio;*/
+    
     SimpleMoteAppP.RadioControl -> Radio;
-    SimpleMoteAppP.RadioReceive -> Radio.Receive[AM_SIMPLE_RADIO];
-    SimpleMoteAppP.RadioSend -> RadioQueue;
-    /* SimpleMoteAppP.RadioSend -> Radio.AMSend[AM_SIMPLE_RADIO]; */
-  
+    
+    SimpleMoteAppP.IPRadioReceive -> Radio.Receive[AM_IP];
+    SimpleMoteAppP.IPRadioSend -> IPRadioQueue;
+
+    SimpleMoteAppP.RoutingRadioReceive -> Radio.Receive[AM_ROUTING_UPDATE];
+    SimpleMoteAppP.RoutingRadioSend -> Radio.AMSend[AM_ROUTING_UPDATE];
+
     // Serial components
     components SerialActiveMessageC as Serial;
     components new SendQueueC(SERIAL_QUEUE_SIZE, sizeof(message_t)) as SerialQueue;
@@ -49,10 +60,18 @@ implementation{
     SimpleMoteAppP.SerialSend -> SerialQueue;
 
     // Packet interfaces
+    components CC2420PacketC;
     SimpleMoteAppP.Packet -> Radio;
     SimpleMoteAppP.AMPacket -> Radio;
+    SimpleMoteAppP.CC2420Packet -> CC2420PacketC;
     
-    // Routing module
-    components new RoutingModuleC() as RouteModule;
-    SimpleMoteAppP.Routing -> RouteModule.Routing;
+    // The timer components
+    components new TimerMilliC() as TimerMilliRoutingUpdate;
+    components new TimerMilliC() as TimerMilliNeighborsAlive;
+    SimpleMoteAppP.TimerRoutingUpdate -> TimerMilliRoutingUpdate; 
+    SimpleMoteAppP.TimerNeighborsAlive -> TimerMilliNeighborsAlive;
+    
+    // ACK
+    SimpleMoteAppP.PacketAcknowledgements -> Radio;
+    
 }
