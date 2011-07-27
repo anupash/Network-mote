@@ -8,7 +8,6 @@
  */
 
 #include "SimpleMoteApp.h"
-//#include "printf.h"
 #include "string.h"
 
 module SimpleMoteAppP {
@@ -42,6 +41,7 @@ module SimpleMoteAppP {
     interface Timer<TMilli> as TimerNeighborsAlive;
   }
 }
+
 implementation {
 
   /*****************************/
@@ -80,10 +80,6 @@ implementation {
   routing_table_t routingTable[MAX_MOTES][MAX_NUM_RECORDS];
   uint8_t noOfRoutes[MAX_MOTES];
 
-  // table of alternative routes
-/*  routing_table_t alternativePaths[MAX_MOTES][MAX_NUM_RECORDS];
-  uint8_t noOfAlternativePaths[MAX_MOTES];*/
-  
   message_t pkt;
   
   // whether radio is busy or available for transmission
@@ -160,30 +156,26 @@ implementation {
 	  // request acknowledgement for the packet to be sent
           call PacketAcknowledgements.requestAck(&sR_m);
 	  
-	  if (call IPRadioSend.send(sR_dest, &sR_m, sR_len) == SUCCESS) {
-	    radioBusy = TRUE;
-	  }
+	  if (call IPRadioSend.send(sR_dest, &sR_m, sR_len) == SUCCESS)
+	    radioBusy = TRUE; 
 	  else
 	    post sendRadio();
 	}
-
 	else
 	  post sendRadio();
-	
 	break;
       
       case AM_ROUTING_UPDATE:
 	if (!radioBusy) {
-	  if (call RoutingRadioSend.send(sR_dest, &sR_m, sR_len) == SUCCESS) {
+	  if (call RoutingRadioSend.send(sR_dest, &sR_m, sR_len) == SUCCESS)
 	    radioBusy = TRUE;
-	  }
 	  else
 	    post sendRadio();
 	}
 	else
 	  post sendRadio();
-	
 	break;
+	
       default: ;
     }
   }
@@ -243,7 +235,7 @@ implementation {
     * @param seq_no The sequential number of the message.
     * @param ord_no The chunk number.
     * 
-    * @return 1, if the signature is contained, 0 otherwise.
+    * @return TRUE, if the signature is contained, FALSE otherwise.
     */
   bool inQueue(am_addr_t client, seq_no_t seq_no, uint8_t ord_no){
       uint8_t i;
@@ -314,7 +306,6 @@ implementation {
       }
     }
 
-    ///TODO decide on the number of records - if MAX_MOTES, then lower the value, otherwise it will not be transmitted
     r_update_pkt->num_of_records = noOfRoutesUpdate;			
 
     // broadcast the routing updates over the radio
@@ -435,9 +426,10 @@ implementation {
 	}
 	// else if the metric has changed 
 	// check if the new metric is acceptable (link quality is above a certain threshold)
-	// otherwise discard it
+	// otherwise remove the route from the routing table and send a routing update to announce the topology has changed
 	if (link_quality < MIN_LINK_QUALITY) {
 	  removeFromRoutingTable(destination, next_hop);
+	  sendRoutingUpdate();
 	  return;
 	}
 	
@@ -596,14 +588,18 @@ implementation {
  /**
   * Choose next available path for sending a packet to a destination
   * 
-  * @param destination The destination to which th packet should be sent
+  * @param destination The destination to which the packet should be sent
   * 
-  * @return true if there was an available path to choose, false otherwise
+  * @return TRUE if there was an available path to choose, FALSE otherwise
   */
   bool chooseNextAvailablePath(uint8_t destination) {
     
-    // delete current best route
-    removeFromRoutingTable(destination, routingTable[destination][0].next_hop);
+    ///TODO send a new routing update BUT be careful to not overwrite the previous sR_m which needs to be retransmitted
+    /// one option: don't remove the route immediately, just mark it with timeout 1, so it will be removed in the next 
+    /// firing of the TimerNeighborsAlive (and an update will be sent then)
+    // delete current best route and send a new routing update with the topology changes
+//     removeFromRoutingTable(destination, routingTable[destination][0].next_hop);
+//     sendRoutingUpdate();
 
     // set task parameter according to the new next hop
     if (noOfRoutes[destination] <= 0)
@@ -754,7 +750,7 @@ implementation {
   }
 
    /** 
-    * Called, when the routing update message was sent over the radio.
+    * Called when the routing update message was sent over the radio.
     * 
     * @see tos.interfaces.Send.sendDone
     */
@@ -847,6 +843,7 @@ implementation {
   event void TimerNeighborsAlive.fired() {
 
     uint8_t i, j;
+    bool topologyChanged = FALSE;
 
     // for each route in the routing table evaluate the timeout values and remove dead routes
     for (i = 0; i < MAX_MOTES; i++) 
@@ -854,9 +851,15 @@ implementation {
 	routingTable[i][j].timeout--;
 
 	// if the timeout becomes 0, remove the route from the routing table
-	if (routingTable[i][j].timeout == 0)
-	  removeFromRoutingTable(i, j);
+	if (routingTable[i][j].timeout == 0) {
+	  removeFromRoutingTable(i, routingTable[i][j].next_hop);
+	  topologyChanged = TRUE;
+	}
       }
+      
+     // send a routing update if the topology has changed
+     if (topologyChanged)
+       sendRoutingUpdate();
   }
 
 }
