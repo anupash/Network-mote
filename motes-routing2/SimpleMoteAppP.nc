@@ -370,42 +370,41 @@ implementation {
   * Process the information received in a routing update
   * 
   * @param routingUpdateMsg the message with the routing updates
-  * @param sourceAddr the address of the source nodes
   * 
   */
-  void processRoutingUpdate(routing_update_t* routingUpdateMsg, am_addr_t sourceAddr, int8_t linkQuality) {
+  void processRoutingUpdate(routing_update_t* routingUpdateMsg, int8_t linkQuality) {
 
-    uint8_t i;
     uint8_t myID;
     bool ignore = FALSE;
+    uint8_t i;
     
-    uint8_t senderNodeId = routingUpdateMsg->node_id;
+    uint8_t senderNodeID = routingUpdateMsg->node_id;
     uint8_t noOfRoutesUpdate = routingUpdateMsg->num_of_records;
     routing_record_t* updateRecords = routingUpdateMsg->records;
     
-    if (senderNodeId == 254)
-      senderNodeId = 0;
-    
-    myID = TOS_NODE_ID == 254 ? 0 : TOS_NODE_ID;
 
-    ignore =  (TOS_NODE_ID == 1 && senderNodeId == 0) ||
-// 	      (TOS_NODE_ID == 1 && senderNodeId == 3) ||
-	      (TOS_NODE_ID == 2 && senderNodeId == 3) ||
-	      (TOS_NODE_ID == 3 && senderNodeId == 2) ||
-	      (TOS_NODE_ID == 254 && senderNodeId == 1)
-// 	      (TOS_NODE_ID == 254 && senderNodeId == 2);
+    // set the node IDs in the routing table convention - gateway is 0
+    myID = TOS_NODE_ID == 254 ? 0 : TOS_NODE_ID;
+    senderNodeID = senderNodeID == 254 ? 0 : senderNodeID;
+
+    ignore =  (TOS_NODE_ID == 1 && senderNodeID == 0) ||
+// 	      (TOS_NODE_ID == 1 && senderNodeID == 3) ||
+	      (TOS_NODE_ID == 2 && senderNodeID == 3) ||
+	      (TOS_NODE_ID == 3 && senderNodeID == 2) ||
+	      (TOS_NODE_ID == 254 && senderNodeID == 1)
+// 	      (TOS_NODE_ID == 254 && senderNodeID == 2);
 	      ;
     
     if (ignore)
       return;
     
     // add the sending node as a neighbor
-    addNewPath(senderNodeId, senderNodeId, 1, linkQuality);
+    addNewPath(senderNodeID, senderNodeID, 1, linkQuality);
     
     // then process the routing update records one by one
     for (i = 0; i < noOfRoutesUpdate; i++)
       if (updateRecords[i].node_id != myID)
-	addNewPath(updateRecords[i].node_id, senderNodeId, updateRecords[i].hop_count + 1, (updateRecords[i].link_quality + linkQuality) / (updateRecords[i].hop_count + 1));
+	addNewPath(updateRecords[i].node_id, senderNodeID, updateRecords[i].hop_count + 1, (updateRecords[i].link_quality + linkQuality) / (updateRecords[i].hop_count + 1));
   }
     
 
@@ -472,7 +471,7 @@ implementation {
 	if (j < i) {
 	  // move j...i-1 to the right
 	  for (k = i; k > j; k--)
-	    routingTable[destination][k] = routingTable[destination][k-1];
+	    routingTable[destination][k] = routingTable[destination][k - 1];
 	  
 	  // insert i in j
 	  routingTable[destination][j] = aux;
@@ -482,7 +481,7 @@ implementation {
 	  for (k = i + 1; k < j; k++)
 	    routingTable[destination][k - 1] = routingTable[destination][k];
 	  // insert i in j-1
-	  routingTable[destination][j-1] = aux;
+	  routingTable[destination][j - 1] = aux;
 	}
       }
       else {                   // this is the route with the worst metric, move it to the end and promote all before it
@@ -517,8 +516,8 @@ implementation {
 
 	// shift all routes from j... one position down 
 	// (if there is no more space, the last will be overwritten)
-	for (k = noOfRoutes[destination]-1; k > j; k--)
-	  routingTable[destination][k] = routingTable[destination][k-1];
+	for (k = noOfRoutes[destination] - 1; k > j; k--)
+	  routingTable[destination][k] = routingTable[destination][k - 1];
 
 	// insert the new route into the j position
 	routingTable[destination][j].next_hop = next_hop;
@@ -591,8 +590,6 @@ implementation {
 	// if there are no more routes to destination also remove all routes which have destination as their next hop
 	for (i = 0; i < MAX_MOTES; i++)
 	  removeFromRoutingTable(i, destination);
-      
-      /// TODO transmit routing update at topology change
     }
   }
 
@@ -673,6 +670,7 @@ implementation {
     * @see tos.interfaces.SplitControl.startDone
     */
   event void SerialControl.startDone(error_t err){}
+  
    /** 
     * Called, when the serial module was stopped.
     * 
@@ -686,11 +684,10 @@ implementation {
     * @see tos.interfaces.Send.sendDone
     */
   event void SerialSend.sendDone(message_t* m, error_t err){
-      if(err == SUCCESS){
-	  serialBlink();
-      }else{
-	  failBlink();
-      }
+    if (err == SUCCESS)
+      serialBlink();
+    else
+      failBlink();
   }
   
 
@@ -704,30 +701,30 @@ implementation {
       //post sendSerialAck();
 
       // Send the message over the radio to the specified destination
-      forwardPacket(m,(myPacketHeader*)payload, len);
+      forwardPacket(m, (myPacketHeader*) payload, len);
       return m;
   }
 
    /** 
-    * Called, when the radio module was started.
+    * Called when the radio module was started.
     * Starts the routing timers and functionality
     * 
     * @see tos.interfaces.SplitControl.startDone
     */
-  event void RadioControl.startDone(error_t err){
-      initRouting();
+  event void RadioControl.startDone(error_t err) {
+    initRouting();
   }
 
    /** 
-    * Called, when the radio module was stopped.
+    * Called when the radio module was stopped.
     * 
     * @see tos.interfaces.SplitControl.stopDone
     */
-  event void RadioControl.stopDone(error_t err){}
+  event void RadioControl.stopDone(error_t err) {}
 
 
    /** 
-    * Called, when the IP message was sent over the radio.
+    * Called when the IP message was sent over the radio.
     * 
     * @see tos.interfaces.Send.sendDone
     */
@@ -735,10 +732,14 @@ implementation {
       
     if (err == SUCCESS) {
       radioBusy = FALSE;
+      
       call Leds.led0Toggle();
-      // if the packet was sent but not acknowledged, it will be resent using the next available path (maximum 2 times)
+      
+      // if the packet was sent but not acknowledged, it will be resent using the next available path (maximum 3 times)
       if (!call PacketAcknowledgements.wasAcked(m) && retransmissionCounter < MAX_RETRANSMISSIONS) {
+	
 	call Leds.led2Toggle();
+	
 	retransmissionCounter++;
 	if (chooseNextAvailablePath(sR_payload.destination)) 
 	  post sendRadio();
@@ -774,37 +775,37 @@ implementation {
     * @see tos.interfaces.Receive.receive
     */
   event message_t* IPRadioReceive.receive(message_t* m, void* payload, uint8_t len){
-      myPacketHeader *myph;
-      am_addr_t source;
+    myPacketHeader *myph;
+    am_addr_t source;
 
-      // Discard if not a valid message
-      if (call AMPacket.type(m) != AM_IP) {
-	return m;
-      }
-
-      // DEBUG
-      call Leds.led1Toggle();
- 
-      myph = (myPacketHeader*) payload;
-      source = myph->sender;
-
-      // Test whether this message is a duplicate
-      if (!inQueue(source, myph->seq_no, myph->ord_no)) {
-	// Add this message to the queue of seen messages
-	addToQueue(source, myph->seq_no, myph->ord_no); 
-		
-	// Test if the message is for us
-	if (myph->destination == TOS_NODE_ID) {
-	  // Forward it to the serial
-	  sS_dest = AM_BROADCAST_ADDR; sS_m = *m; sS_len = len;
-	  post sendSerial();
-	}
-	else {
-	  // Forward it to the appropriate destination
-	  forwardPacket(m, myph, len);
-	}
-      }
+    // Discard if not a valid message
+    if (call AMPacket.type(m) != AM_IP)
       return m;
+
+    // DEBUG
+    call Leds.led1Toggle();
+
+    myph = (myPacketHeader*) payload;
+    source = myph->sender;
+
+    // Test whether this message is a duplicate
+    if (!inQueue(source, myph->seq_no, myph->ord_no)) {
+      // Add this message to the queue of seen messages
+      addToQueue(source, myph->seq_no, myph->ord_no); 
+	      
+      // Test if the message is for us
+      if (myph->destination == TOS_NODE_ID) {
+	// Forward it to the serial
+	sS_dest = AM_BROADCAST_ADDR; 
+	sS_m = *m; 
+	sS_len = len;
+	post sendSerial();
+      }
+      else
+	// Forward it to the appropriate destination
+	forwardPacket(m, myph, len);
+    }
+    return m;
   }
   
   /** 
@@ -813,19 +814,16 @@ implementation {
   * @see tos.interfaces.Receive.receive
   */
   event message_t* RoutingRadioReceive.receive(message_t* m, void* payload, uint8_t len){
-      routing_update_t* receivedRoutingUpdate;
-      am_addr_t source;
+    routing_update_t* receivedRoutingUpdate;
 
-      // Discard if not a valid message
-      if (len != sizeof(routing_update_t)  || call AMPacket.type(m) != AM_ROUTING_UPDATE)
-	return m;
-      
-      source = call AMPacket.source(m);
-      
-      receivedRoutingUpdate = (routing_update_t*) payload;
-      processRoutingUpdate(receivedRoutingUpdate, source, call CC2420Packet.getRssi(payload));
-      
+    // Discard if not a valid message
+    if (len != sizeof(routing_update_t)  || call AMPacket.type(m) != AM_ROUTING_UPDATE)
       return m;
+    
+    receivedRoutingUpdate = (routing_update_t*) payload;
+    processRoutingUpdate(receivedRoutingUpdate, call CC2420Packet.getRssi(payload));
+    
+    return m;
   }
   
  /**

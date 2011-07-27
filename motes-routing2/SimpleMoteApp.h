@@ -16,8 +16,8 @@
 /*
  * General definitions.
  */
-enum{
-    MAX_MOTES = 16
+enum {
+  MAX_MOTES = 10
 };
 
 /* 
@@ -25,17 +25,17 @@ enum{
  * Values are quite arbitrary right now.
  */
 enum {
-    AM_SIMPLE_RADIO = 15,
-    AM_SIMPLE_SERIAL = 0
+  AM_SIMPLE_RADIO = 15,
+  AM_SIMPLE_SERIAL = 0
 };
 
 /*
  * Queue sizes
  */
 enum {
-    RADIO_QUEUE_SIZE = 10,
-    SERIAL_QUEUE_SIZE = 10,
-    PACKET_QUEUE_SIZE = 16
+  RADIO_QUEUE_SIZE = 10,
+  SERIAL_QUEUE_SIZE = 10,
+  PACKET_QUEUE_SIZE = 16
 };
 
 typedef nx_uint8_t nx_seq_no_t;
@@ -62,11 +62,11 @@ typedef nx_struct myPacketHeader {
  * General definitions.
  */
 enum {
-  MAX_NUM_RECORDS = 10,
-  MAX_TIMEOUT = 30,
-  MAX_HOPCOUNTS = 15,
+  MAX_NUM_RECORDS = 8,
+  MAX_TIMEOUT = 15,
+  MAX_HOP_COUNT = 10,
   MIN_LINK_QUALITY = -80, 
-  MAX_RETRANSMISSIONS = 10
+  MAX_RETRANSMISSIONS = 3
 };
 
 /* 
@@ -99,10 +99,5 @@ typedef nx_struct routing_update {
     nx_uint8_t num_of_records;
     routing_record_t records[MAX_NUM_RECORDS];
 } routing_update_t; 
-
-
-typedef nx_struct ack {
-
-} ack_t;
 
 #endif
