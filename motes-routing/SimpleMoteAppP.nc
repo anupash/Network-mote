@@ -132,11 +132,12 @@ implementation {
  /**
   * Choose next available path for sending a packet to a destination
   * 
-  * @param destination The destination to which th packet should be sent
+  * @param destination The destination to which the packet should be sent
+  * @param counter Indicates the index of the new route to be chosen
   * 
   * @return true if there was an available path to choose, false otherwise
   */
-  bool chooseNextAvailablePath(uint8_t destination);
+  bool chooseNextAvailablePath(uint8_t destination, uint8_t counter);
   
   
   /*********/
@@ -380,8 +381,8 @@ implementation {
 
     ignore =  (TOS_NODE_ID == 1 && senderNodeID == 0) ||
 // 	      (TOS_NODE_ID == 1 && senderNodeID == 3) ||
-	      (TOS_NODE_ID == 2 && senderNodeID == 3) ||
-	      (TOS_NODE_ID == 3 && senderNodeID == 2) ||
+//	      (TOS_NODE_ID == 2 && senderNodeID == 3) ||
+//	      (TOS_NODE_ID == 3 && senderNodeID == 2) ||
 	      (TOS_NODE_ID == 254 && senderNodeID == 1)
 // 	      (TOS_NODE_ID == 254 && senderNodeID == 2);
 	      ;
@@ -592,13 +593,16 @@ implementation {
   * 
   * @return TRUE if there was an available path to choose, FALSE otherwise
   */
-  bool chooseNextAvailablePath(uint8_t destination) {
+  bool chooseNextAvailablePath(uint8_t destination, uint8_t counter) {
+    
+    // convert destination to routing table format
+    destination = (destination == 254) ? 0 : destination;
     
     ///TODO send a new routing update BUT be careful to not overwrite the previous sR_m which needs to be retransmitted
     /// one option: don't remove the route immediately, just mark it with timeout 1, so it will be removed in the next 
     /// firing of the TimerNeighborsAlive (and an update will be sent then)
     // delete current best route and send a new routing update with the topology changes
-//     removeFromRoutingTable(destination, routingTable[destination][0].next_hop);
+    removeFromRoutingTable(destination, routingTable[destination][0].next_hop);
 //     sendRoutingUpdate();
 
     // set task parameter according to the new next hop
@@ -733,11 +737,8 @@ implementation {
       
       // if the packet was sent but not acknowledged, it will be resent using the next available path (maximum 3 times)
       if (!call PacketAcknowledgements.wasAcked(m) && retransmissionCounter < MAX_RETRANSMISSIONS) {
-	
-	call Leds.led2Toggle();
-	
 	retransmissionCounter++;
-	if (chooseNextAvailablePath(sR_payload.destination)) 
+	if (chooseNextAvailablePath(sR_payload.destination, retransmissionCounter)) 
 	  post sendRadio();
       }
     }
