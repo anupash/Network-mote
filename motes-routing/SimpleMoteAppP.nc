@@ -92,13 +92,13 @@ implementation {
   void addNewPath(uint8_t destination, uint8_t next_hop, uint8_t hop_count, int8_t link_quality);
   void removeFromRoutingTable(uint8_t destination, uint8_t next_hop);
   bool isPathBetter(uint8_t new_hop_count, uint8_t old_hop_count, int8_t new_link_quality, int8_t old_link_quality);
-  bool chooseNextAvailablePath(uint8_t destination, uint8_t counter);
+  bool chooseNextAvailablePath(uint8_t destination);
   
   /*********/
   /* Tasks */
   /*********/
 
-  /** 
+ /** 
   * A task for sending radio messages
   */
   task void sendRadio(){
@@ -155,7 +155,7 @@ implementation {
   /* Functions */
   /*************/
 
-  /**
+ /**
   * Initialize variables and timers of the routing module
   */
   void initRouting() {
@@ -173,15 +173,15 @@ implementation {
     call TimerNeighborsAlive.startPeriodic(1000);
   }
   
-   /** 
-    * Test, whether a message signature is in the queue (was recently seen).
-    * 
-    * @param client The TOS_NODE_ID. Should be smaller that MAX_MOTES!!!
-    * @param seq_no The sequential number of the message.
-    * @param ord_no The chunk number.
-    * 
-    * @return TRUE, if the signature is contained, FALSE otherwise.
-    */
+ /** 
+  * Test, whether a message signature is in the queue (was recently seen).
+  * 
+  * @param client The TOS_NODE_ID. Should be smaller that MAX_MOTES!!!
+  * @param seq_no The sequential number of the message.
+  * @param ord_no The chunk number.
+  * 
+  * @return TRUE, if the signature is contained, FALSE otherwise.
+  */
   bool inQueue(am_addr_t client, seq_no_t seq_no, uint8_t ord_no){
       uint8_t i;
       uint16_t identifier;
@@ -203,13 +203,13 @@ implementation {
       return FALSE;
   }
 
-   /** 
-    * Inserts a new message identifier into one of the queues.
-    * 
-    * @param client The TOS_NODE_ID. Should be smaller that MAX_MOTES!!!
-    * @param seq_nr The sequential number of the message.
-    * @param ord_nr The chunk number.
-    */
+ /** 
+  * Inserts a new message identifier into one of the queues.
+  * 
+  * @param client The TOS_NODE_ID. Should be smaller that MAX_MOTES!!!
+  * @param seq_nr The sequential number of the message.
+  * @param ord_nr The chunk number.
+  */
   void addToQueue(am_addr_t client, seq_no_t seq_no, uint8_t ord_no){
       uint16_t identifier;
 
@@ -305,7 +305,8 @@ implementation {
  /**
   * Process the information received in a routing update
   * 
-  * @param routingUpdateMsg the message with the routing updates
+  * @param routingUpdateMsg the message with the routing updates (only payload)
+  * @param linkQuality the quality of the link between the sending node and this node
   * 
   */
   void processRoutingUpdate(routing_update_t* routingUpdateMsg, int8_t linkQuality) {
@@ -334,7 +335,7 @@ implementation {
     if (ignore)
       return;
 
-    call Leds.led2Toggle();
+    blinkRoutingRadioReceive();
     
     // add the sending node as a neighbor
     addNewPath(senderNodeID, senderNodeID, 1, linkQuality);
@@ -346,18 +347,18 @@ implementation {
   }
     
 
-   /**
-    * Add a new path to a certain destination in the routingTable
-    * 
-    * @param destination The destination for which a new path should be added 
-    * @param next_hop The next hop in the new path
-    * @param hop_count The new hop count
-    * @param link_quality The new link quality
-    */
+ /**
+  * Add a new path to a certain destination in the routingTable
+  * 
+  * @param destination The destination for which a new path should be added 
+  * @param next_hop The next hop in the new path
+  * @param hop_count The new hop count to destination
+  * @param link_quality The new link quality of the path
+  */
   void addNewPath(uint8_t destination, uint8_t next_hop, uint8_t hop_count, int8_t link_quality) {
     uint8_t i, j, k;
     routing_table_t aux;
-    bool found = FALSE;
+    bool worstFound = FALSE;
     bool routeFound = FALSE;
     
     // first check if the new path already exists
@@ -393,16 +394,16 @@ implementation {
       routingTable[destination][i].timeout = MAX_TIMEOUT;
       
       // find the first path (j) with a worse metric than this (i) 
-      found = FALSE;
+      worstFound = FALSE;
       for (j = 0; j < noOfRoutes[destination]; j++) {
 	if (j != i && isPathBetter(routingTable[destination][i].hop_count, routingTable[destination][j].hop_count,
 				  routingTable[destination][i].link_quality, routingTable[destination][j].link_quality)) {
-	  found = TRUE;
+	  worstFound = TRUE;
 	  break;
 	}
       }
       
-      if (found) {
+      if (worstFound) {
 	// re-order the paths according to metric
 	aux = routingTable[destination][i];
       
@@ -440,16 +441,16 @@ implementation {
 	return;
 
       // find the first path (j) with a worse metric than the new one 
-      found = FALSE;
+      worstFound = FALSE;
       for (j = 0; j < noOfRoutes[destination]; j++)
 	if (isPathBetter(hop_count, routingTable[destination][j].hop_count,
 			 link_quality, routingTable[destination][j].link_quality)) {
-	  found = TRUE;
+	  worstFound = TRUE;
 	  break;
 	}
 	
       // if there is one, insert the new route above it
-      if (found) {
+      if (worstFound) {
 	if (noOfRoutes[destination] < MAX_NUM_RECORDS)
 	  noOfRoutes[destination]++;
 
@@ -478,19 +479,19 @@ implementation {
     }
   }
 
-   /**
-    * Test if one path is better than the other
-    * First criteria: hop count
-    * If hop counts are the same, test according to 
-    * the link quality
-    * 
-    * @param new_hop_count The hop count of the new path
-    * @param old_hop_count The hop count of the old path
-    * @param new_link_quality The link quality of the new path
-    * @param old_link_quality The link quality of the old path
-    * 
-    * @return Return if the new path is better than the old one
-    */
+ /**
+  * Test if one path is better than the other
+  * First criteria: hop count
+  * If hop counts are the same, test according to 
+  * the link quality
+  * 
+  * @param new_hop_count The hop count of the new path
+  * @param old_hop_count The hop count of the old path
+  * @param new_link_quality The link quality of the new path
+  * @param old_link_quality The link quality of the old path
+  * 
+  * @return Return TRUE if the new path is better than the old one, FALSE else
+  */
   bool isPathBetter(uint8_t new_hop_count, uint8_t old_hop_count, int8_t new_link_quality, int8_t old_link_quality) {
     
     if (new_hop_count < old_hop_count)
@@ -505,10 +506,11 @@ implementation {
     
 
  /**
-  * Removing an entry from the routing table
+  * Remove an entry from the routing table
   * 
   * @param destination The destination for which a route should be removed
   * @param next_hop The next hop identifying the route that should be removed
+  * 
   */
   void removeFromRoutingTable(uint8_t destination, uint8_t next_hop){
     uint8_t i, j;
@@ -539,17 +541,13 @@ implementation {
   * 
   * @return TRUE if there was an available path to choose, FALSE otherwise
   */
-  bool chooseNextAvailablePath(uint8_t destination, uint8_t counter) {
+  bool chooseNextAvailablePath(uint8_t destination) {
     
     // convert destination to routing table format
     destination = (destination == 254) ? 0 : destination;
     
-    ///TODO send a new routing update BUT be careful to not overwrite the previous sR_m which needs to be retransmitted
-    /// one option: don't remove the route immediately, just mark it with timeout 1, so it will be removed in the next 
-    /// firing of the TimerNeighborsAlive (and an update will be sent then)
     // delete current best route and send a new routing update with the topology changes
     removeFromRoutingTable(destination, routingTable[destination][0].next_hop);
-//     sendRoutingUpdate();
 
     // set task parameter according to the new next hop
     if (noOfRoutes[destination] <= 0)
@@ -563,37 +561,36 @@ implementation {
   /* Debug functions */
   /*******************/
 
-
-   /** 
-    * Toggles a LED when a message is send to the radio. 
-    */
-  void radioBlink(){
-//         call Leds.led0Toggle();
+ /** 
+  * Toggles a LED when a message is sent through the radio. 
+  */
+  void blinkIPRadioSent(){
+    call Leds.led0Toggle();
   }
 
-   /** 
-    * Toggles a LED when a message is send to the serial. 
-    */
-  void serialBlink(){
-       // call Leds.led1Toggle();
+ /** 
+  * Toggles a LED when a message is received through the radio 
+  */
+  void blinkIPRadioReceived(){
+    call Leds.led1Toggle();
   }
 
-   /** 
-    * Toggles a LED when a message couldn't be send and is dropped 
-    */
-  void failBlink(){
-      //   call Leds.led2Toggle();
+ /** 
+  * Toggles a LED when a routing update was received
+  */
+  void blinkRoutingRadioReceive(){
+    call Leds.led2Toggle();
   }
 
   /**********/
   /* Events */
   /**********/
 
-   /** 
-    * When the device is booted, the radio and the serial device are initialized.
-    * 
-    * @see tos.interfaces.Boot.booted
-    */
+ /** 
+  * When the device is booted, the radio and the serial device are initialized.
+  * 
+  * @see tos.interfaces.Boot.booted
+  */
   event void Boot.booted(){
       uint8_t i,j;
 
@@ -610,38 +607,37 @@ implementation {
       call SerialControl.start();
   }
 
-   /** 
-    * Called, when the serial module was started.
-    * 
-    * @see tos.interfaces.SplitControl.startDone
-    */
+ /** 
+  * Called, when the serial module was started.
+  * 
+  * @see tos.interfaces.SplitControl.startDone
+  */
   event void SerialControl.startDone(error_t err){}
   
-   /** 
-    * Called, when the serial module was stopped.
-    * 
-    * @see tos.interfaces.SplitControl.stopDone
-    */
+ /** 
+  * Called, when the serial module was stopped.
+  * 
+  * @see tos.interfaces.SplitControl.stopDone
+  */
   event void SerialControl.stopDone(error_t err){}
   
-   /** 
-    * Called, when message was sent over the serial device.
-    * 
-    * @see tos.interfaces.Send.sendDone
-    */
+ /** 
+  * Called, when message was sent over the serial device.
+  * 
+  * @see tos.interfaces.Send.sendDone
+  */
   event void SerialSend.sendDone(message_t* m, error_t err){
-    if (err == SUCCESS)
+/*    if (err == SUCCESS)
       serialBlink();
     else
-      failBlink();
+      failBlink();*/
   }
   
-
-   /** 
-    * This event is called, when a new message was received over the serial.
-    * 
-    * @see tos.interfaces.Receive.receive
-    */
+ /** 
+  * This event is called, when a new message was received over the serial.
+  * 
+  * @see tos.interfaces.Receive.receive
+  */
   event message_t* SerialReceive.receive(message_t* m, void* payload, uint8_t len){
       // Send an acknowledgement to the connected PC
       //post sendSerialAck();
@@ -651,40 +647,39 @@ implementation {
       return m;
   }
 
-   /** 
-    * Called when the radio module was started.
-    * Starts the routing timers and functionality
-    * 
-    * @see tos.interfaces.SplitControl.startDone
-    */
+ /** 
+  * Called when the radio module was started.
+  * Starts the routing timers and functionality
+  * 
+  * @see tos.interfaces.SplitControl.startDone
+  */
   event void RadioControl.startDone(error_t err) {
     initRouting();
   }
 
-   /** 
-    * Called when the radio module was stopped.
-    * 
-    * @see tos.interfaces.SplitControl.stopDone
-    */
+ /** 
+  * Called when the radio module was stopped.
+  * 
+  * @see tos.interfaces.SplitControl.stopDone
+  */
   event void RadioControl.stopDone(error_t err) {}
 
-
-   /** 
-    * Called when the IP message was sent over the radio.
-    * 
-    * @see tos.interfaces.Send.sendDone
-    */
+ /** 
+  * Called when the IP message was sent over the radio.
+  * 
+  * @see tos.interfaces.Send.sendDone
+  */
   event void IPRadioSend.sendDone(message_t* m, error_t err) {	
       
     if (err == SUCCESS) {
       radioBusy = FALSE;
       
-      call Leds.led0Toggle();
+      blinkIPRadioSent();
       
       // if the packet was sent but not acknowledged, it will be resent using the next available path (maximum 3 times)
       if (!call PacketAcknowledgements.wasAcked(m) && retransmissionCounter < MAX_RETRANSMISSIONS) {
 	retransmissionCounter++;
-	if (chooseNextAvailablePath(sR_payload.destination, retransmissionCounter)) 
+	if (chooseNextAvailablePath(sR_payload.destination)) 
 	  post sendRadio();
       }
     }
@@ -692,15 +687,15 @@ implementation {
     else 
       if (err == EBUSY)
 	radioBusy = TRUE;
-      else
-	failBlink();
+//       else
+// 	failBlink();
   }
 
-   /** 
-    * Called when the routing update message was sent over the radio.
-    * 
-    * @see tos.interfaces.Send.sendDone
-    */
+ /** 
+  * Called when the routing update message was sent over the radio.
+  * 
+  * @see tos.interfaces.Send.sendDone
+  */
   event void RoutingRadioSend.sendDone(message_t* m, error_t err){	
 
     if (err == SUCCESS)
@@ -708,15 +703,15 @@ implementation {
     else
       if (err == EBUSY)
 	radioBusy = TRUE;
-      else
-	failBlink();
+//       else
+// 	failBlink();
   }
 
-   /** 
-    * This event is called, when a new IP message was received over the radio.
-    * 
-    * @see tos.interfaces.Receive.receive
-    */
+ /** 
+  * This event is called, when a new IP message was received over the radio.
+  * 
+  * @see tos.interfaces.Receive.receive
+  */
   event message_t* IPRadioReceive.receive(message_t* m, void* payload, uint8_t len){
     myPacketHeader *myph;
     am_addr_t source;
@@ -725,9 +720,8 @@ implementation {
     if (call AMPacket.type(m) != AM_IP)
       return m;
 
-    // DEBUG
-    call Leds.led1Toggle();
-
+    blinkIPRadioReceived();
+    
     myph = (myPacketHeader*) payload;
     source = myph->sender;
 
@@ -751,12 +745,12 @@ implementation {
     return m;
   }
   
-  /** 
-  * This event is called, when a new routing update message was received over the radio.
+ /** 
+  * This event is called when a new routing update message was received over the radio.
   * 
   * @see tos.interfaces.Receive.receive
   */
-  event message_t* RoutingRadioReceive.receive(message_t* m, void* payload, uint8_t len){
+  event message_t* RoutingRadioReceive.receive(message_t* m, void* payload, uint8_t len) {
     routing_update_t* receivedRoutingUpdate;
 
     // Discard if not a valid message
@@ -780,7 +774,7 @@ implementation {
     sendRoutingUpdate();
   }
   
-  /**
+ /**
   * Called when the timer for updating the timeout of entries in the routing table expires.
   * When this timer is fired, the the timeout of each entry in the routing table is decreased by one
   * If zero is reached, the entry is removed
