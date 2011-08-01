@@ -93,7 +93,32 @@ implementation {
   void removeFromRoutingTable(uint8_t destination, uint8_t next_hop);
   bool isPathBetter(uint8_t new_hop_count, uint8_t old_hop_count, int8_t new_link_quality, int8_t old_link_quality);
   bool chooseNextAvailablePath(uint8_t destination);
-  
+
+  /*******************/
+  /* Debug functions */
+  /*******************/
+
+ /** 
+  * Toggles a LED when a message is sent through the radio. 
+  */
+  void blinkIPRadioSent(){
+    call Leds.led0Toggle();
+  }
+
+ /** 
+  * Toggles a LED when a message is received through the radio 
+  */
+  void blinkIPRadioReceived(){
+    call Leds.led1Toggle();
+  }
+
+ /** 
+  * Toggles a LED when a routing update was received
+  */
+  void blinkRoutingRadioReceive(){
+    call Leds.led2Toggle();
+  }
+
   /*********/
   /* Tasks */
   /*********/
@@ -555,31 +580,6 @@ implementation {
     sR_dest = routingTable[destination][0].next_hop;  
     
     return TRUE;
-  }
-
-  /*******************/
-  /* Debug functions */
-  /*******************/
-
- /** 
-  * Toggles a LED when a message is sent through the radio. 
-  */
-  void blinkIPRadioSent(){
-    call Leds.led0Toggle();
-  }
-
- /** 
-  * Toggles a LED when a message is received through the radio 
-  */
-  void blinkIPRadioReceived(){
-    call Leds.led1Toggle();
-  }
-
- /** 
-  * Toggles a LED when a routing update was received
-  */
-  void blinkRoutingRadioReceive(){
-    call Leds.led2Toggle();
   }
 
   /**********/
