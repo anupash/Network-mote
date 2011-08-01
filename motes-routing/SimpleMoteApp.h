@@ -64,6 +64,7 @@ typedef nx_struct myPacketHeader {
 enum {
   MAX_NUM_RECORDS = 8,
   MAX_TIMEOUT = 15,
+  ROUTING_UPDATE_INTERVAL = 3000,
   MAX_HOP_COUNT = 10,
   MIN_LINK_QUALITY = -80, 
   MAX_RETRANSMISSIONS = 3

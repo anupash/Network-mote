@@ -167,7 +167,7 @@ implementation {
     radioBusy = FALSE;
 
     // start the timer for the routing updates
-    call TimerRoutingUpdate.startPeriodic(5000);
+    call TimerRoutingUpdate.startPeriodic(ROUTING_UPDATE_INTERVAL);
     
     // start timer for checking dead neighbors
     call TimerNeighborsAlive.startPeriodic(1000);
@@ -377,7 +377,7 @@ implementation {
 	// otherwise remove the route from the routing table and send a routing update to announce the topology has changed
 	if (link_quality < MIN_LINK_QUALITY) {
 	  removeFromRoutingTable(destination, next_hop);
-	  sendRoutingUpdate();
+// 	  sendRoutingUpdate();
 	  return;
 	}
 	
@@ -799,8 +799,8 @@ implementation {
       }
       
      // send a routing update if the topology has changed
-     if (topologyChanged)
-       sendRoutingUpdate();
+/*     if (topologyChanged)
+       sendRoutingUpdate();*/
   }
 
 }
