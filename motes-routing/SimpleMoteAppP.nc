@@ -89,56 +89,10 @@ implementation {
   /* Function declarations */
   /*************************/
 
-  /**
-  * Print function for debugging purposes
-  * 
-  * @param msg The debug message to be displayed
-  * 
-  */
-  void printDebugMessage(char* msg);
-  
-  
-  /**
-  * Add a new path to a certain destination in the routingTable
-  * 
-  * @param destination The destination for which a new path should be added 
-  * @param next_hop The next hop in the new path
-  * @param hop_count The new hop count
-  * @param link_quality The new link quality
-  */
   void addNewPath(uint8_t destination, uint8_t next_hop, uint8_t hop_count, int8_t link_quality);
-  
-  /**
-  * Test if one path is better than the other
-  * 
-  * @param new_hop_count The hop count of the new path
-  * @param old_hop_count The hop count of the old path
-  * @param new_link_quality The link quality of the new path
-  * @param old_link_quality The link quality of the old path
-  * 
-  * @return Return if the new path is better than the old one
-  */
-  bool isPathBetter(uint8_t new_hop_count, uint8_t old_hop_count, int8_t new_link_quality, int8_t old_link_quality);
-  
-  /**
-  * Removing an entry from the routing table
-  * 
-  * @param destination The destination for which a route should be removed
-  * @param next_hop The next hop identifying the route that should be removed; if it is -1, remove all routes to destination
-  */
   void removeFromRoutingTable(uint8_t destination, uint8_t next_hop);
-  
-  
- /**
-  * Choose next available path for sending a packet to a destination
-  * 
-  * @param destination The destination to which the packet should be sent
-  * @param counter Indicates the index of the new route to be chosen
-  * 
-  * @return true if there was an available path to choose, false otherwise
-  */
+  bool isPathBetter(uint8_t new_hop_count, uint8_t old_hop_count, int8_t new_link_quality, int8_t old_link_quality);
   bool chooseNextAvailablePath(uint8_t destination, uint8_t counter);
-  
   
   /*********/
   /* Tasks */
@@ -149,7 +103,6 @@ implementation {
   */
   task void sendRadio(){
       
-    
     switch (sR_type) {
       
       case AM_IP: 
@@ -202,18 +155,9 @@ implementation {
   /* Functions */
   /*************/
 
-   /**
-    * Print function for debugging purposes
-    */
-  void printDebugMessage(char* msg) {
-    //printf(msg);
-    //printfflush();
-  }
-   
-   
-   /**
-    * Initialize variables and timers of the routing module
-    */
+  /**
+  * Initialize variables and timers of the routing module
+  */
   void initRouting() {
     uint8_t i;
     
@@ -381,14 +325,16 @@ implementation {
 
     ignore =  (TOS_NODE_ID == 1 && senderNodeID == 0) ||
 // 	      (TOS_NODE_ID == 1 && senderNodeID == 3) ||
-//	      (TOS_NODE_ID == 2 && senderNodeID == 3) ||
-//	      (TOS_NODE_ID == 3 && senderNodeID == 2) ||
+	      (TOS_NODE_ID == 2 && senderNodeID == 3) ||
+	      (TOS_NODE_ID == 3 && senderNodeID == 2) ||
 	      (TOS_NODE_ID == 254 && senderNodeID == 1)
 // 	      (TOS_NODE_ID == 254 && senderNodeID == 2);
 	      ;
     
     if (ignore)
       return;
+
+    call Leds.led2Toggle();
     
     // add the sending node as a neighbor
     addNewPath(senderNodeID, senderNodeID, 1, linkQuality);
