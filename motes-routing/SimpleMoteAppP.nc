@@ -350,11 +350,7 @@ implementation {
     senderNodeID = senderNodeID == 254 ? 0 : senderNodeID;
 
     ignore =  (TOS_NODE_ID == 1 && senderNodeID == 0) ||
-// 	      (TOS_NODE_ID == 1 && senderNodeID == 3) ||
-	      (TOS_NODE_ID == 2 && senderNodeID == 3) ||
-	      (TOS_NODE_ID == 3 && senderNodeID == 2) ||
 	      (TOS_NODE_ID == 254 && senderNodeID == 1)
-// 	      (TOS_NODE_ID == 254 && senderNodeID == 2);
 	      ;
     
     if (ignore)
